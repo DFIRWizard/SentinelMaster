@@ -1,0 +1,15 @@
+let Lookback = 1h;
+let RiskyUser =
+IdentityInfo
+| where Timestamp > ago(Lookback)
+| where RiskStatus == "AtRisk" and ChangeSource == "AzureActiveDirectory"
+| where RiskLevel == "Medium" or RiskLevel == "High"
+| distinct AccountUpn;
+OAuthAppInfo
+| where AddedOnTime > ago(Lookback)
+| where VerifiedPublisher == "{}"
+| distinct AddedOnTime, AppName, OAuthAppId
+| join CloudAppEvents on $left.OAuthAppId == $right.ObjectId
+| where ActionType == "Consent to application."
+| extend UPN = tostring(RawEventData.UserId)
+| where UPN has_any (RiskyUser)
