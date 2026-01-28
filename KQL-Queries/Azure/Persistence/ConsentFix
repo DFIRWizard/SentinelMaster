@@ -1,0 +1,60 @@
+//Possible ConsentFix
+let AzureCLI_App = "04b07795-8ddb-461a-bbee-02f9e1bf7b46";
+let LookbackWindow = 30d;
+// IP Stats for enrichment
+let IPStats = AADSignInEventsBeta
+| where Timestamp > ago(LookbackWindow)
+| where ApplicationId == AzureCLI_App
+| where ErrorCode == 0
+| summarize IPSigninCount = count(), IPDistinctUsers = dcount(AccountUpn) by IPAddress;
+// Main detection with separate interactive/non-interactive timestamps
+AADSignInEventsBeta
+| where ApplicationId == AzureCLI_App
+| where ErrorCode == 0
+| extend IsInteractive = iff(LogonType has "interactiveUser", 1, 0)
+| extend IsNonInteractive = iff(LogonType has "nonInteractiveUser", 1, 0)
+| summarize
+    // Track WHEN each type of logon happened
+    FirstInteractive = minif(Timestamp, IsInteractive == 1),
+    LastInteractive = maxif(Timestamp, IsInteractive == 1),
+    FirstNonInteractive = minif(Timestamp, IsNonInteractive == 1),
+    LastNonInteractive = maxif(Timestamp, IsNonInteractive == 1),
+    // Track WHERE each type came from
+    InteractiveIPs = make_set_if(IPAddress, IsInteractive == 1),
+    NonInteractiveIPs = make_set_if(IPAddress, IsNonInteractive == 1),
+    InteractiveLocations = make_set_if(Country, IsInteractive == 1),
+    NonInteractiveLocations = make_set_if(Country, IsNonInteractive == 1),
+    // Keep full lists for context
+    AllIPs = make_set(IPAddress),
+    AllLocations = make_set(Country),
+    UAList = make_set(UserAgent),
+    HasInteractive = max(IsInteractive),
+    HasNonInteractive = max(IsNonInteractive)
+    by AccountUpn, SessionId
+// Core filters
+| where HasInteractive == 1 and HasNonInteractive == 1
+| where array_length(AllLocations) > 1
+// Check if non-interactive IPs differ from interactive IPs
+| extend SusNonInteractiveIPs = set_difference(NonInteractiveIPs, InteractiveIPs)
+| where array_length(SusNonInteractiveIPs) > 0
+| extend PivotSeconds = datetime_diff('second', FirstNonInteractive, FirstInteractive)
+// Only care about non-interactive AFTER interactive (attacker uses token after victim auths)
+| where FirstNonInteractive > FirstInteractive
+// Flatten for IP enrichment
+| mv-expand AttackerIP = SusNonInteractiveIPs to typeof(string)
+| lookup IPStats on $left.AttackerIP == $right.IPAddress
+| project 
+    AccountUpn, 
+    SessionId,
+    FirstInteractive,
+    FirstNonInteractive,
+    PivotSeconds,
+    InteractiveIPs,
+    InteractiveLocations,
+    SusNonInteractiveIPs,
+    NonInteractiveLocations,
+    UAList,
+    AttackerIP,
+    AttackerIPSigninCount = IPSigninCount,
+    AttackerIPDistinctUsers = IPDistinctUsers
+| order by PivotSeconds asc, AttackerIPDistinctUsers desc
