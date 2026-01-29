@@ -1,0 +1,9 @@
+// This detection looks for administrative activity that creates or updates Cross-Tenant Access Settings or Cross-Tenant Identity Synchronization Settings in Microsoft Entra ID (Azure AD). These settings control how identities, claims, and trust relationships are shared between Microsoft Entra tenants.
+
+// An attacker with sufficient privileges—typically Global Administrator, Entra ID Administrator, or Cross-Tenant Access Administrator—may abuse these configurations to establish persistent access or trust relationships between a compromised tenant and a controlled (attacker) tenant.
+// By adding or modifying a partner tenant configuration, the threat actor can enable automatic synchronization of user or group objects, effectively granting long-term access that survives password resets or conditional access revocations.
+
+// These actions should be rare and typically only performed during legitimate B2B or multi-tenant integrations.
+
+AuditLogs
+| where (Category == 'CrossTenantIdentitySynceSettings' and OperationName in~ ('Create a partner cross-tenant identity sync setting', 'Update a partner cross-tenant identity sync setting')) or (Category == 'CrossTenantAccessSettings' and OperationName in~ ('Add a partner to cross-tenant access setting', 'Update a partner cross-tenant access setting', 'Update the company default cross-tenant access setting'))

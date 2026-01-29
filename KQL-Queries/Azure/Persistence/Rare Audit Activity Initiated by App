@@ -1,0 +1,41 @@
+  let starttime = todatetime('{{StartTimeISO}}');
+  let endtime = todatetime('{{EndTimeISO}}');
+  let auditLookback = starttime - 14d;
+  let propertyIgnoreList = dynamic(["TargetId.UserType", "StsRefreshTokensValidFrom", "LastDirSyncTime", "DeviceOSVersion", "CloudDeviceOSVersion", "DeviceObjectVersion"]);
+  let appIgnoreList = dynamic(["Microsoft Azure AD Group-Based Licensing"]);
+  let AuditTrail = AuditLogs
+  | where TimeGenerated between(auditLookback..starttime)
+  | where isnotempty(tostring(parse_json(tostring(InitiatedBy.app)).displayName))
+  | extend InitiatedByApp = tostring(parse_json(tostring(InitiatedBy.app)).displayName)
+  | extend ModProps = TargetResources.[0].modifiedProperties
+  | extend InitiatedByIpAddress = tostring(parse_json(tostring(InitiatedBy.app)).ipAddress)
+  | extend TargetUserPrincipalName = tolower(tostring(TargetResources.[0].userPrincipalName))
+  | extend TargetResourceName = tolower(tostring(TargetResources.[0].displayName))
+  | mv-expand ModProps
+  | where isnotempty(tostring(parse_json(tostring(ModProps.newValue))[0]))
+  | extend PropertyName = tostring(ModProps.displayName), newValue = tostring(parse_json(tostring(ModProps.newValue))[0])
+  | where PropertyName !in~ (propertyIgnoreList) and (PropertyName !~ "Action Client Name" and newValue !~ "DirectorySync") and (PropertyName !~ "Included Updated Properties" and newValue !~ "LastDirSyncTime")
+  | where InitiatedByApp !in~ (appIgnoreList) and OperationName !~ "Change user license"
+  | summarize by OperationName, InitiatedByApp, TargetUserPrincipalName, InitiatedByIpAddress, TargetResourceName, PropertyName;
+  let AccountMods = AuditLogs
+  | where TimeGenerated >= starttime
+  | where isnotempty(tostring(parse_json(tostring(InitiatedBy.app)).displayName))
+  | extend InitiatedByApp = tostring(parse_json(tostring(InitiatedBy.app)).displayName)
+  | extend ModProps = TargetResources.[0].modifiedProperties
+  | extend InitiatedByIpAddress = tostring(parse_json(tostring(InitiatedBy.app)).ipAddress)
+  | extend TargetUserPrincipalName = tolower(tostring(TargetResources.[0].userPrincipalName))
+  | extend TargetResourceName = tolower(tostring(TargetResources.[0].displayName))
+  | mv-expand ModProps
+  | where isnotempty(tostring(parse_json(tostring(ModProps.newValue))[0]))
+  | extend PropertyName = tostring(ModProps.displayName), newValue = tostring(parse_json(tostring(ModProps.newValue))[0])
+  | where PropertyName !in~ (propertyIgnoreList) and (PropertyName !~ "Action Client Name" and newValue !~ "DirectorySync") and (PropertyName !~ "Included Updated Properties" and newValue !~ "LastDirSyncTime")
+  | where InitiatedByApp !in~ (appIgnoreList) and OperationName !~ "Change user license"
+  | extend ModifiedProps = pack("PropertyName",PropertyName,"newValue",newValue, "Id", Id, "CorrelationId", CorrelationId)
+  | summarize StartTimeUtc = min(TimeGenerated), EndTimeUtc = max(TimeGenerated), Activity = make_bag(ModifiedProps) by Type, InitiatedByApp, TargetUserPrincipalName, InitiatedByIpAddress, TargetResourceName, Category, OperationName, PropertyName;
+  let RareAudits = AccountMods | join kind= leftanti (
+     AuditTrail
+  ) on OperationName, InitiatedByApp, InitiatedByIpAddress, TargetUserPrincipalName;//, PropertyName; //uncomment if you want to see Rare Property changes.
+  RareAudits
+  | summarize StartTime = min(StartTimeUtc), EndTime = max(EndTimeUtc), make_set(Activity), make_set(PropertyName) by InitiatedByApp, OperationName, TargetUserPrincipalName, InitiatedByIpAddress, TargetResourceName
+  | order by TargetUserPrincipalName asc, StartTime asc
+  | extend timestamp = StartTime, AccountCustomEntity = TargetUserPrincipalName, HostCustomEntity = iff(set_PropertyName has_any ('DeviceOSType', 'CloudDeviceOSType'), TargetResourceName, ''), IPCustomEntity = InitiatedByIpAddress

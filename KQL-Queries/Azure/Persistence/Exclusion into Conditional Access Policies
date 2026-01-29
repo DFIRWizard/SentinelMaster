@@ -1,0 +1,13 @@
+AADSignInEventsBeta
+| extend ca = todynamic(tostring(ConditionalAccessPolicies))
+| mv-expand Policies = parse_json(ConditionalAccessPolicies)
+| extend PolicyName = tostring(Policies.displayName),
+ PolicyId = tostring(Policies.id),
+ PolicyResult = tostring(Policies.result),
+ EnforcedGrantControls = tostring(Policies.enforcedGrantControls),
+ EnforcedSessionControls = tostring(Policies.enforcedSessionControls),
+ Excluded = tostring(Policies.excludeRulesSatisfied)
+| mv-expand CA_field_excluded = parse_json(Excluded)
+| extend CA_field_reason_excluded = tostring(todynamic(CA_field_excluded.ruleSatisfied))
+| where Excluded contains "conditional" and EnforcedGrantControls has '["Block"]'
+| summarize total_CA_excluded_times= count() by AccountDisplayName,AccountUpn,Country,CA_field_reason_excluded ,EnforcedGrantControls, PolicyName, PolicyId
