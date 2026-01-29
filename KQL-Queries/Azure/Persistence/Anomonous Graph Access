@@ -1,0 +1,42 @@
+let LookbackWindow = 7d;
+let BaselineWindow = 1h;
+let WhitelistApp = dynamic(["AppID1", "AppID2"]);
+// Step 1: Materialize distinct known values
+let KnownIPs = materialize(
+MicrosoftGraphActivityLogs
+| where TimeGenerated between (ago(LookbackWindow)..ago(BaselineWindow))
+| where RequestMethod =~ "GET"
+| where RequestUri has_all ("https://graph.microsoft.com", "/users/", "/messages")
+| where ResponseStatusCode == 200
+| distinct IPAddress
+);
+let KnownAgents = materialize(
+MicrosoftGraphActivityLogs
+| where TimeGenerated between (ago(LookbackWindow)..ago(BaselineWindow))
+| where RequestMethod =~ "GET"
+| where RequestUri has_all ("https://graph.microsoft.com", "/users/", "/messages")
+| where ResponseStatusCode == 200
+| distinct UserAgent
+);
+let KnownApps = materialize(
+MicrosoftGraphActivityLogs
+| where TimeGenerated between (ago(LookbackWindow)..ago(BaselineWindow))
+| where RequestMethod =~ "GET"
+| where RequestUri has_all ("https://graph.microsoft.com", "/users/", "/messages")
+| where ResponseStatusCode == 200
+| distinct AppId
+);
+// Step 2: Anomaly detection
+MicrosoftGraphActivityLogs
+| where TimeGenerated > ago(BaselineWindow)
+| where RequestMethod =~ "GET"
+| where RequestUri has_all ("https://graph.microsoft.com", "/users/", "/messages")
+| where ResponseStatusCode == 200
+| where AppId !in (WhitelistApp)
+| where IPAddress !in (KnownIPs) or UserAgent !in (KnownAgents) or AppId !in (KnownApps)
+| extend Reason = strcat(
+iif(IPAddress !in (KnownIPs), "New IP;", ""),
+iif(UserAgent !in (KnownAgents), "New UserAgent;", ""),
+iif(AppId !in (KnownApps), "New AppId;", "")
+)
+| project TimeGenerated, AppId, IPAddress, UserAgent, RequestUri, ResponseStatusCode, ServicePrincipalId, IdentityProvider, Reason
