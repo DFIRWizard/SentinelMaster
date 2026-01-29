@@ -1,0 +1,79 @@
+{
+    "version": "Notebook/1.0",
+    "items": [
+        {
+            "type": 1,
+            "content": {
+                "json": "## Device activity quick wins\n---\n\nThis workbook will help visualize data across the tenant. Each dashboard matches MITTRE frame work standards "
+            },
+            "name": "text - 2",
+            "id": "dd6b98d4-1539-487c-8303-5f3751c9aa61"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "DeviceNetworkEvents\n| where RemotePort == 445\n| summarize ConnectionCount = count() by bin(Timestamp, 1h), DeviceName, RemoteIP",
+                "size": 1,
+                "title": "Lateral Movement:SMB traffic",
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "visualization": "table",
+                "tileSettings": {
+                    "showBorder": false,
+                    "titleContent": {
+                        "columnMatch": "DeviceName",
+                        "formatter": 1
+                    },
+                    "leftContent": {
+                        "columnMatch": "ConnectionCount",
+                        "formatter": 12,
+                        "formatOptions": {
+                            "palette": "auto"
+                        },
+                        "numberFormat": {
+                            "unit": 17,
+                            "options": {
+                                "maximumSignificantDigits": 3,
+                                "maximumFractionDigits": 2
+                            }
+                        }
+                    }
+                },
+                "crossComponentResources": [
+                    "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourcegroups/sentinel/providers/microsoft.operationalinsights/workspaces/sentinelloganalyticsworkspace"
+                ]
+            },
+            "name": "query - 2",
+            "id": "dacf1a11-3e7c-4163-85e1-72ee9afadaa9"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "\r\nlet WhitelistedPaths = dynamic([\r\n    \"\\\\AppData\\\\Local\\\\Chrome\\\\User Data\",\r\n    \"\\\\AppData\\\\Local\\\\Microsoft\\\\Teams\\\\current\",\r\n    \"\\\\AppData\\\\Local\\\\ZoomMeetings\\\\bin\",\r\n    \"\\\\AppData\\\\Local\\\\Google\\\\GoogleUpdater\\\\\",\r\n    \"\\\\AppData\\\\Local\\\\Opera\\\\autoupdate\\\\opera_autoupdate.exe\",\r\n    \"\\\\AppData\\\\Local\\\\Microsoft\\\\OneDrive\\\\OneDriveStandaloneUpdater.exe\",\r\n    \"\\\\AppData\\\\Local\\\\Dropbox\\\\DropboxUpdater\\\\\",\r\n    \"\\\\AppData\\\\Local\\\\Mozilla Firefox\\\\firefox.exe\",\r\n    \"\\\\AppData\\\\Local\\\\GoToMeeting\\\\\",\r\n    \"\\\\AppData\\\\Local\\\\Mozilla Firefox\\\\default-browser-agent.exe\",\r\n    \"\\\\AppData\\\\Local\\\\BraveSoftware\\\\Update\\\\BraveUpdate.exe\",\r\n    \"\\\\AppData\\\\Local\\\\MEGAsync\\\\MEGAupdater.exe\",\r\n    \"AppData\\\\Local\\\\VLC Plus Player Updater\\\\Updater.exe\",\r\n    \"\\\\AppData\\\\Local\\\\ConvertMate\\\\UpdateRetreiver.exe\",\r\n    \"AppData\\\\Local\\\\Programs\\\\Syncthing\\\\stctl.exe\",\r\n    \"\\\\AppData\\\\Local\\\\Programs\\\\Opera Air\\\\autoupdate\\\\opera_autoupdate.exe\",\r\n    \"\\\\AppData\\\\Local\\\\PDFClick\\\\PDFClickUpdater.exe\",\r\n    \"\\\\AppData\\\\Local\\\\AVAST Software\\\\Browser\\\\Application\\\\AvastBrowser.exe\",\r\n    \"\\\\AppData\\\\Local\\\\Vivaldi\\\\Application\\\\update_notifier.exe\",\r\n    \"\\\\AppData\\\\Local\\\\anaconda3\\\\envs\\\\EMMA\\\\python.exe\"\r\n]);\r\nDeviceProcessEvents\r\n| where Timestamp > ago(7d)\r\n| where InitiatingProcessFileName in (\"svchost.exe\", \"taskeng.exe\")\r\n| where InitiatingProcessCommandLine has_any (\"netsvcs\", \"Schedule\") or InitiatingProcessFileName == \"taskeng.exe\"\r\n| where FolderPath matches regex @\"(?i)C:\\\\Users\\\\.*\\\\AppData\\\\Local\\\\.*\"\r\n| where not(FolderPath has_any (WhitelistedPaths))\r\n| extend TaskSource = iff(InitiatingProcessFileName == \"svchost.exe\", \"Scheduled Task (svchost)\", \"Scheduled Task (taskeng)\")\r\n| project Timestamp, DeviceName, InitiatingProcessFileName, FolderPath, TaskSource\r\n| order by Timestamp desc\r\n",
+                "size": 0,
+                "title": "Persistence: Schedule Task over AppData Directory",
+                "timeContext": {
+                    "durationMs": 86400000
+                },
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "visualization": "table",
+                "crossComponentResources": [
+                    "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourcegroups/sentinel/providers/microsoft.operationalinsights/workspaces/sentinelloganalyticsworkspace"
+                ]
+            },
+            "name": "query - 2",
+            "id": "a92415d3-4739-4b93-900d-1ab13f6dee59"
+        }
+    ],
+    "isLocked": false,
+    "fallbackResourceIds": [
+        "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourcegroups/sentinel/providers/microsoft.operationalinsights/workspaces/sentinelloganalyticsworkspace"
+    ],
+    "fromTemplateId": "sentinel-UserWorkbook",
+    "context": {
+        "ownerId": "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourcegroups/sentinel/providers/microsoft.operationalinsights/workspaces/sentinelloganalyticsworkspace"
+    }
+}
