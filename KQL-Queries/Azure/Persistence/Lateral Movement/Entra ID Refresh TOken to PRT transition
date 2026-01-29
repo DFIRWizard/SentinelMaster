@@ -1,0 +1,37 @@
+let timeWindow = 1d;
+let rt_auths = SigninLogs
+| where TimeGenerated > ago(timeWindow)
+// First event: A non-interactive sign-in using a Refresh Token via the Microsoft Authentication Broker.
+| where ResultType == 0
+| where UserType == "Member"
+| where AppId == "29d9ed98-a469-4536-ade2-f981bc1d605e" // Microsoft Authentication Broker
+| where IncomingTokenType == "refreshToken"
+| where isnotempty(DeviceDetail.deviceId)
+| where DeviceDetail.trustType == "Azure AD joined"
+// An unbound session status is a strong indicator of token replay.
+| where tostring(TokenProtectionStatusDetails.signInSessionStatus) == "unbound"
+| project rt_TimeGenerated = TimeGenerated, UserPrincipalName, DeviceId = tostring(DeviceDetail.deviceId), rt_IPAddress = IPAddress, rt_Location = Location, rt_CorrelationId = CorrelationId;
+let prt_auths = SigninLogs
+| where TimeGenerated > ago(timeWindow)
+// Second event: A sign-in using a Primary Refresh Token to a resource other than the Device Registration Service.
+| where ResultType == 0
+| where IncomingTokenType == "primaryRefreshToken"
+| where ResourceDisplayName != "Device Registration Service"
+| where isnotempty(DeviceDetail.deviceId)
+| project prt_TimeGenerated = TimeGenerated, UserPrincipalName, DeviceId = tostring(DeviceDetail.deviceId), prt_IPAddress = IPAddress, prt_Location = Location, prt_ResourceDisplayName = ResourceDisplayName, prt_CorrelationId = CorrelationId;
+rt_auths
+| join kind=inner prt_auths on UserPrincipalName, DeviceId
+// Ensure the PRT authentication happens after the RT authentication within the defined time window.
+| where prt_TimeGenerated > rt_TimeGenerated and (prt_TimeGenerated - rt_TimeGenerated) <= timeWindow
+| project
+    StartTime = rt_TimeGenerated,
+    EndTime = prt_TimeGenerated,
+    UserPrincipalName,
+    DeviceId,
+    RT_Auth_IPAddress = rt_IPAddress,
+    RT_Auth_Location = rt_Location,
+    PRT_Auth_IPAddress = prt_IPAddress,
+    PRT_Auth_Location = prt_Location,
+    PRT_Auth_Resource = prt_ResourceDisplayName,
+    RT_Auth_CorrelationId = rt_CorrelationId,
+    PRT_Auth_CorrelationId = prt_CorrelationId
