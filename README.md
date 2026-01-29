@@ -113,5 +113,4 @@ Cloud forensics enhancements
 
 …feel free to submit a PR.
 
-📬 Contact
-If you have questions or want to collaborate on automation, DFIR workflows, or detection engineering, feel
+
