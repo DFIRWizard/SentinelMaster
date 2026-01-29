@@ -1,0 +1,2525 @@
+{
+    "version": "Notebook/1.0",
+    "items": [
+        {
+            "type": 1,
+            "content": {
+                "json": "## Azure Threat Research Matrix Workbook\n---\n\n"
+            },
+            "name": "text - 2",
+            "id": "0218410a-681d-47a6-a7fa-91d6b64353ba"
+        },
+        {
+            "type": 9,
+            "content": {
+                "version": "KqlParameterItem/1.0",
+                "parameters": [
+                    {
+                        "id": "c8d0a421-e106-400d-a9a6-753333b2927e",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "Subscription",
+                        "type": 6,
+                        "isRequired": true,
+                        "multiSelect": true,
+                        "quote": "'",
+                        "delimiter": ",",
+                        "value": [
+                            "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9"
+                        ],
+                        "typeSettings": {
+                            "additionalResourceOptions": [
+                                "value::all"
+                            ],
+                            "includeAll": false,
+                            "showDefault": false
+                        },
+                        "timeContext": {
+                            "durationMs": 86400000
+                        }
+                    },
+                    {
+                        "id": "15ae10ce-a737-4d1e-bb84-0490207e8c7d",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "Workspace",
+                        "type": 5,
+                        "description": "Select Workspace where Azure Activity Logs are available",
+                        "isRequired": true,
+                        "multiSelect": true,
+                        "quote": "'",
+                        "delimiter": ",",
+                        "query": "resources\r\n| where type =~ 'microsoft.operationalinsights/workspaces'\r\n| project id",
+                        "crossComponentResources": [
+                            "{Subscription}"
+                        ],
+                        "value": [
+                            "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourceGroups/sentinel/providers/Microsoft.OperationalInsights/workspaces/SentinelLogAnalyticsWorkspace"
+                        ],
+                        "typeSettings": {
+                            "additionalResourceOptions": [
+                                "value::all"
+                            ],
+                            "showDefault": false
+                        },
+                        "timeContext": {
+                            "durationMs": 86400000
+                        },
+                        "queryType": 1,
+                        "resourceType": "microsoft.resourcegraph/resources"
+                    },
+                    {
+                        "id": "2deb21f7-8d02-4112-aee2-df86abceec6f",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "TimeRange",
+                        "type": 4,
+                        "value": {
+                            "durationMs": 29635199999,
+                            "endTime": "2025-12-19T23:59:59.999Z"
+                        },
+                        "typeSettings": {
+                            "selectableValues": [
+                                {
+                                    "durationMs": 86400000
+                                },
+                                {
+                                    "durationMs": 604800000
+                                },
+                                {
+                                    "durationMs": 2592000000
+                                }
+                            ],
+                            "allowCustom": true
+                        },
+                        "timeContext": {
+                            "durationMs": 86400000
+                        }
+                    }
+                ],
+                "style": "pills"
+            },
+            "name": "parameters - 9",
+            "id": "f7219e4a-1cb6-4487-a6ea-c7924d4836b1"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure Threat Research Matrix (ATRM),is a knowledge base that provides details around the tactics & techniques, a potential adversary may use to compromise an Azure Resource or Azure Active Directory. Objective of this workbook is to educate security professionals on various threat vectors to Azure resources when not following Azure Security Best Practices and their detection methods using ATRM framework.It is not intended to be complete list.  Reference: https://techcommunity.microsoft.com/blog/microsoft-security-blog/introducing-the-azure-threat-research-matrix/3584976\r\n#### This Workbook utilizes Azure Activity Logs and Entra ID Audit Logs as a data source and it can be used to monitor sensitive operations from security aspects. Suspecious activities in Azure Resources can be detected by reviewing who performed it and from which IP.This workbook leverages detection methods provided in Azure Threat Research Matrix . Link: https://microsoft.github.io/Azure-Threat-Research-Matrix/",
+                "style": "info"
+            },
+            "name": "text - 28",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "768ebbce-c05c-4c6a-a4c7-f01c1c5eded2"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "<svg viewBox=\"0 0 19 19\" width=\"20\" class=\"fxt-escapeShadow\" role=\"presentation\" focusable=\"false\" xmlns:svg=\"http://www.w3.org/2000/svg\" xmlns:xlink=\"http://www.w3.org/1999/xlink\" aria-hidden=\"true\"><g><path fill=\"#1b93eb\" d=\"M16.82 8.886c0 4.81-5.752 8.574-7.006 9.411a.477.477 0 01-.523 0C8.036 17.565 2.18 13.7 2.18 8.886V3.135a.451.451 0 01.42-.419C7.2 2.612 6.154.625 9.5.625s2.3 1.987 6.8 2.091a.479.479 0 01.523.419z\"></path><path fill=\"url(#0024423711759027356)\" d=\"M16.192 8.99c0 4.392-5.333 7.947-6.483 8.575a.319.319 0 01-.418 0c-1.15-.732-6.483-4.183-6.483-8.575V3.762a.575.575 0 01.313-.523C7.2 3.135 6.258 1.357 9.4 1.357s2.2 1.882 6.274 1.882a.45.45 0 01.419.418z\"></path><path d=\"M9.219 5.378a.313.313 0 01.562 0l.875 1.772a.314.314 0 00.236.172l1.957.284a.314.314 0 01.174.535l-1.416 1.38a.312.312 0 00-.09.278l.334 1.949a.313.313 0 01-.455.33l-1.75-.92a.314.314 0 00-.292 0l-1.75.92a.313.313 0 01-.455-.33L7.483 9.8a.312.312 0 00-.09-.278L5.977 8.141a.314.314 0 01.174-.535l1.957-.284a.314.314 0 00.236-.172z\" class=\"msportalfx-svg-c01\"></path></g></svg>&nbsp;<span style=\"font-family: Open Sans; font-weight: 620; font-size: 14px;font-style: bold;margin:-10px 0px 0px 0px;position: relative;top:-3px;left:-4px;\"> Please take time to answer a quick survey,\r\n</span>[<span style=\"font-family: Open Sans; font-weight: 620; font-size: 14px;font-style: bold;margin:-10px 0px 0px 0px;position: relative;top:-3px;left:-4px;\"> click here. </span>](https://forms.microsoft.com/Pages/ResponsePage.aspx?id=v4j5cvGGr0GRqy180BHbR6WFGSmpLgBFs8JcO3-8uANUOUpaWlNYWEIxTTI0VldWVk40V0VBOFVIWS4u)"
+            },
+            "name": "text - 27",
+            "id": "58307478-6ab8-430f-912a-f11f98a1d4e5"
+        },
+        {
+            "type": 11,
+            "content": {
+                "version": "LinkItem/1.0",
+                "style": "tabs",
+                "tabStyle": "bigger",
+                "links": [
+                    {
+                        "id": "c739b2d9-5aae-49d6-a60d-71e2579027a3",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Overall Activities",
+                        "subTarget": "overall",
+                        "preText": "Overall Activities",
+                        "style": "link"
+                    },
+                    {
+                        "id": "8d0877b6-40e9-49cd-aca6-19de8a51ba91",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Compute",
+                        "subTarget": "compute",
+                        "style": "link"
+                    },
+                    {
+                        "id": "e5eff5f5-d41e-4a4d-9756-9701368ab954",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Network",
+                        "subTarget": "network",
+                        "style": "link"
+                    },
+                    {
+                        "id": "e6003cc2-c70f-4d76-9e44-4f51f549234b",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Policy",
+                        "subTarget": "policy",
+                        "style": "link"
+                    },
+                    {
+                        "id": "d3d8e694-6d6a-42d8-a771-14c36c1b4721",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Security",
+                        "subTarget": "security",
+                        "style": "link"
+                    },
+                    {
+                        "id": "9e5ce69d-94ef-4dc8-9d70-9e01d410481a",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Data",
+                        "subTarget": "data",
+                        "style": "link"
+                    },
+                    {
+                        "id": "e1827ecf-625c-4d02-a78d-17f47f0853b2",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Subscription",
+                        "subTarget": "account",
+                        "style": "link"
+                    },
+                    {
+                        "id": "0b23a7ca-8b0a-4c01-b521-b67e7471fabd",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Application",
+                        "subTarget": "app",
+                        "style": "link"
+                    },
+                    {
+                        "id": "c4024de2-141c-4b01-b223-2cd1ae86c09a",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "External Access",
+                        "subTarget": "external",
+                        "style": "link"
+                    },
+                    {
+                        "id": "3329cbd4-200b-45e7-ba22-1556d238d216",
+                        "cellValue": "wbtab",
+                        "linkTarget": "parameter",
+                        "linkLabel": "Identity",
+                        "subTarget": "identity",
+                        "style": "link"
+                    }
+                ]
+            },
+            "name": "links - 10",
+            "id": "df3b0ee2-db5c-4809-97e8-72e9655ec87b"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Review who is doing any admin activities (like Update/delete) in your environment. Specifically look for any Non IT team user or Guest user accounts for any suspicious activities like mass deletion of resources. You can also select the account for further drill down of activities performed and check their earliest and latest activities to see how long they are doing such activities in your environment. If their earliest time is very recent, it may indicate a new account performing such activities in your environment and you may want to analyze those accounts if they are authorized ones. ",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "overall"
+            },
+            "name": "text - 42",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "5ac8c643-cd79-4d95-8b4d-77a8cd69dcea"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n//| where Category == \"Administrative\"\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| where isnotempty(Caller)\r\n| summarize deletions = countif(OperationNameValue hassuffix \"Delete\"), updates = countif(OperationNameValue hassuffix \"write\"), Activities = count() by Caller",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Overall Activities",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "exportFieldName": "Caller",
+                "exportParameterName": "callerexport",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ],
+                "gridSettings": {
+                    "filter": true
+                }
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "overall"
+            },
+            "name": "Overall Activities",
+            "id": "e71e42d0-16e7-4a64-b84c-89572b275c05"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where Caller == \"{callerexport}\"\r\n//| where Category == \"Administrative\"\r\n//| where OperationNameValue hassuffix \"Delete\" or OperationNameValue hassuffix \"write\"\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Selected Caller  Activities (Please select caller from above overall activities table)",
+                "noDataMessage": "Please select caller from above overall activities table",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ],
+                "gridSettings": {
+                    "filter": true
+                }
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "overall"
+            },
+            "name": "Caller  Activities",
+            "id": "beeee57a-a37e-46a9-9dbb-c8ed35244512"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where Caller == \"{callerexport}\"\r\n//| where Category == \"Administrative\"\r\n//| where OperationNameValue hassuffix \"Delete\" or OperationNameValue hassuffix \"write\"\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| summarize total=count(), min(TimeGenerated), max(TimeGenerated) by OperationNameValue, Caller\r\n| sort  by total desc ",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Operations with earliest and latest occurance for the selected caller",
+                "noDataMessage": "Please select caller from above overall activities table",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ],
+                "gridSettings": {
+                    "filter": true
+                }
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "overall"
+            },
+            "name": "Caller  Activities - Copy",
+            "id": "74522470-ad7c-4db7-802d-6167168d9b30"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Security Products Modification : Adversaries can disable or modify Sentinel Analytic Rules, Data Connectors, Workbooks, Alerts or diagnostic settings to prevent detection. Review any changes to Analytic rules, Alerts and diagnostic settings for any suspecious activities. Note Changes to Playbooks are covered under Application section.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "security"
+            },
+            "name": "securitytxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "756d44bb-bedf-46df-9603-62d044892c12"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.SecurityInsights/alertRules/write\", \"Microsoft.SecurityInsights/alertRules/delete\"]);\r\n// Microsoft Sentinel Analytics - Rule Create / Update / Delete\r\nAzureActivity\r\n//| where Category == \"Administrative\"\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Sentinel Analytic Rules Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "security"
+            },
+            "name": "Sentinel Analytic Rules Changes",
+            "id": "8cc41810-4043-4bb7-94f1-bf2dd3876857"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Network Security Group Modification: Adversaries can modify the rules in a Network Security Group to establish unauthorized access over addidtional IP address or ports.Review the changes and who performed it from which IP.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT506/AZT506/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "network"
+            },
+            "name": "nsgrulechangetxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "5c5bdf92-5951-4b14-b71b-00ceff6b4c0f"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Network/networkSecurityGroups/write\", \"Microsoft.Network/networkSecurityGroups/delete\"]);\r\n// Azure NSG Create / Update / Delete\r\nAzureActivity\r\n//| where Category == \"Administrative\"\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "NSG Rule Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "network"
+            },
+            "name": "NSG Rule Changes",
+            "id": "924b22de-5e14-4537-b094-12041161f989"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.SecurityInsights/dataConnectors/write\", \"Microsoft.SecurityInsights/dataConnectors/delete\"]);\r\n// Microsoft Sentinel Data Connectors Update / Delete\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Sentinel Data Connector Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "security"
+            },
+            "name": "Sentinel Data Connector Changes",
+            "id": "0eb22a7a-6d9a-4527-bfbf-62cc54053ac6"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Insights/ActivityLogAlerts/Delete\", \"Microsoft.Insights/ActivityLogAlerts/Write\", \"Microsoft.Insights/ActionGroups/Write\", \"Microsoft.Insights/ActionGroups/Delete\"]);\r\n// Log Alerts Update / Delete\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure Log Alerts Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "security"
+            },
+            "name": "Azure Log Alerts Changes ",
+            "id": "a590de58-1afa-4bd3-aeff-7b2218909a46"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"microsoft.insights/diagnosticSettings/delete\", \"microsoft.insights/diagnosticSettings/write\"]);\r\n// Diagnostic Settings Update / Delete\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Resource Diagnostic Settings Changes ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "security"
+            },
+            "name": "Resource Diagnostic Settings Changes  ",
+            "id": "b9b6fcd7-4885-4d6b-94c9-1a1a2eaf9bc6"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure Policy Backdoor: By configuring a policy with the 'DeployIfNotExists' definition or by disabling a policy requiring a security guardrail, an adverary may establish persistence by creating a backdoor.Review any changes to your Azure policies. Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT508/AZT508/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "policy"
+            },
+            "name": "policychangetxt",
+            "id": "20e753ee-127b-416a-ae8e-6b437a794faf"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Authorization/policyAssignments/delete\", \"Microsoft.Authorization/policyAssignments/write\", \"Microsoft.Authorization/policyDefinitions/delete\"]);\r\n// Azure Policy Update / Delete\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure Policy Changes ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "policy"
+            },
+            "name": "Azure Policy Changes ",
+            "id": "248f9dc0-8249-4d48-a120-dda87f729124"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Resource Lock Manipulation: Resource Lock protects against any accidental deletion or update. Review who removed or added the resource locks. ",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "policy"
+            },
+            "name": "lockchangetxt ",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "e02cfdf5-94ca-4d2a-a48e-129b0ff91a93"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Authorization/locks/write\", \"Microsoft.Authorization/locks/delete\"]);\r\n// Azure Policy Update / Delete\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure Resource Locks Changes  ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "policy"
+            },
+            "name": "Azure Resource Locks Changes  ",
+            "id": "b8746880-58ec-448b-aba3-931ccd5d04e1"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure Policy Backdoor: Review the deployment attempts denied by policy for any suspecious activities.Adversaries can use policies to disable safeguards. ",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "policy"
+            },
+            "name": "policydeniedtxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "6fc58513-ed5f-4752-af66-f364487fdd33"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where OperationNameValue == \"Microsoft.Authorization/policies/deny/action\"\r\n| where ActivityStatusValue == \"Failed\"\r\n| extend Policydetail = tolower(tostring(todynamic(Properties).['policies']))\r\n| extend PolicyAssignmentName = tolower(tostring(todynamic(Policydetail)[0].['policyassignmentdisplayname']))\r\n| extend PolicyDefinitionName = tolower(tostring(todynamic(Policydetail)[0].['policydefinitiondisplayname']))\r\n| extend AssignementID = tolower(tostring(todynamic(Policydetail)[0].['policyassignmentid']))\r\n| project TimeGenerated, Caller, ActivityStatusValue, ResourceGroup, ResourceProviderValue,  Resource,  _ResourceId, _SubscriptionId, PolicyAssignmentName, PolicyDefinitionName, AssignementID",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Resource Deployment Denied by Azure Policy",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "policy"
+            },
+            "name": "Resource Deployment Denied by Azure Policy ",
+            "id": "edd04eb4-e718-481c-9741-688f78092b8e"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure Policy Backdoor: Review the deployments performed by policy for any suspecious activities.Adversaries can use policies to deploy any unauthorized resources. ",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "policy"
+            },
+            "name": "policydeniedtxt - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "0d706c6d-c15d-49a0-9340-204d43440fe8"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where OperationNameValue == \"Microsoft.Authorization/policies/deployIfNotExists/action\"\r\n| extend Pupdated = tolower(tostring(todynamic(Properties).['updatedResources']))\r\n| where Pupdated != \"[]\" and Pupdated != \"\"\r\n| extend Policydetail = tolower(tostring(todynamic(Properties).['policies']))\r\n| extend PolicyName = tolower(tostring(todynamic(Policydetail)[0].['policyassignmentdisplayname']))\r\n| extend PolicyDefinitionName = tolower(tostring(todynamic(Policydetail)[0].['policydefinitiondisplayname']))\r\n| extend AssignementID = tolower(tostring(todynamic(Policydetail)[0].['policyassignmentid']))\r\n| project Resource, ResourceGroup, _ResourceId, SubscriptionId, Caller, PolicyName, PolicyDefinitionName, AssignementID, UpdatedObject=Pupdated \r\n",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Resource Deployment Performed by Azure Policy",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "policy"
+            },
+            "name": "Resource Deployment performed by Azure Policy ",
+            "id": "2dcf70a7-b3dd-43e2-8d9a-70ccc92c2210"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Data Exfiltration: Adversaries mostly target the data repositaries such as databases, storage accounts, Key Vaults for potential data exfiltration attacks. Review the activity logs for any suspecious activities by unknowm person from strange IP.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "data"
+            },
+            "name": "sqlchangetxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "23471849-3c63-41a8-9d79-a9710eacf942"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Sql/servers/administrators/write\", \"Microsoft.Sql/servers/administrators/delete\",\"Microsoft.Sql/servers/elasticPools/delete\",\"Microsoft.Sql/servers/databases/delete\"]);\r\n// Azure SQL Update / Delete\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure SQL Changes   ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "data"
+            },
+            "name": "Azure SQL Changes   ",
+            "id": "eab87430-0d0f-4bcc-998d-9c49e46d43cf"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### SAS URI Generation: Adversaries can create SAS URI or replication policies  for potential data exfiltration attacks. Review the activity logs for any suspecious activities. Link: https://microsoft.github.io/Azure-Threat-Research-Matrix/Impact/AZT703/AZT703-1/ , https://microsoft.github.io/Azure-Threat-Research-Matrix/Impact/AZT701/AZT701-2/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "data"
+            },
+            "name": "sqlchangetxt - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "7b4ab185-622e-45ec-af52-8009d180cee1"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Storage/storageAccounts/delete\", \"Microsoft.Storage/storageAccounts/create\", \"Microsoft.Storage/storageAccounts/objectReplicationPolicies/write\", \"Microsoft.Storage/storageAccounts/listkeys/action\", \"Microsoft.Storage/storageAccounts/listAccountSas/action\"]);\r\n// Azure Storage  Delete\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure Storage Account Changes   ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ],
+                "gridSettings": {
+                    "filter": true
+                }
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "data"
+            },
+            "name": "Azure Storage Changes    ",
+            "id": "eb92c4c3-3992-4b83-bc0d-6fdf3b2f0df1"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure Key Vault Dumping: Adversaries can target Key Vaults for potential data exfiltration attacks. Review the activity logs for any suspecious activities like someone updating credentials. Note you need Azure Diagnostic Logs to monitor who read credentails and is not covered under this workbook.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "data"
+            },
+            "name": "sqlchangetxt - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "c4422d3c-9e05-4328-bb11-bb6343e43fc4"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.KeyVault/vaults/write\", \"Microsoft.KeyVault/vaults/delete\",\"Microsoft.KeyVault/vaults/secrets/write\"]);\r\n// Keyvault \r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure KeyVault Changes   ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "data"
+            },
+            "name": "Azure KeyVault Changes     ",
+            "id": "37b5fc22-b2dd-4d67-ba6a-2ce15e815df2"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure DNS Zone Tampering : Adversaries can modify the DNS zones or delete DNS zones.Review the changes and who performed it from which IP.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "network"
+            },
+            "name": "dnschangetxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "d602a4da-ea2e-4a0f-a85c-5deb29f51961"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "//let opValues = dynamic([\"Microsoft.Network/dnszones/write\", \"Microsoft.Network/dnszones/delete\"]);\r\n// Azure Storage  Delete\r\nAzureActivity\r\n| where OperationNameValue contains \"dnszones\"\r\n| where ActivityStatus == \"Succeeded\"\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure DNS Changes   ",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "network"
+            },
+            "name": "Azure DNS Changes     ",
+            "id": "d53127ee-b2dd-46b2-954a-d547528c27b3"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"microsoft.insights/workbooks/write\", \"microsoft.insights/workbooks/delete\"]);\r\n// Microsoft Sentinel Workbook Create / Update / Delete\r\nAzureActivity\r\n//| where Category == \"Administrative\"\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Sentinel Workbook Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ],
+                "gridSettings": {
+                    "filter": true
+                }
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "security"
+            },
+            "name": "Sentinel Workbook Changes",
+            "id": "b118f25e-5603-457c-9d29-e559306255c7"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Virtual Machine Scripting: By utilizing the 'CustomScriptExtension' extension on a Virtual Machine, Threat Actor can pass PowerShell commands to the VM as SYSTEM account.Review any \"Create or Update Virtual Machine Extension\" activities for any suspicious ones. Link: https://microsoft.github.io/Azure-Threat-Research-Matrix/Execution/AZT301/AZT301-2/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "extensionchange",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "38a84d71-686e-4204-b523-cca98df62e0c"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "// VM extensions Create / Update \r\nAzureActivity\r\n//| where Category == \"Administrative\"\r\n| where OperationNameValue =~ \"MICROSOFT.COMPUTE/VIRTUALMACHINES/EXTENSIONS/WRITE\"\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "VM Extension Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "VM Extension Changes",
+            "id": "d81777be-e703-4da3-bd4a-18ecd31b622b"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Virtual Machine Scripting: By utilizing Compute Gallery Applications, Threat Actor can pass MS-DOS or PowerShell commands to the VM as SYSTEM account.Review any \"Create or Update Gallery Application\" activities for any suspicious ones. Link: https://microsoft.github.io/Azure-Threat-Research-Matrix/Execution/AZT301/AZT301-4/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "galleryappchange ",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "c3667fb0-fa20-4954-9493-f699fe07b299"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Compute/galleries/write\", \"Microsoft.Compute/galleries/applications/write\", \"Microsoft.Compute/galleries/applications/versions/write\"]);\r\n// Gallery Application\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n//| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Compute Gallery Application Changes ",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "Compute Gallery Application Changes ",
+            "id": "8bed8608-448b-4c54-a41a-5a9e5ee6b587"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Virtual Machine Scripting: By utilizing the 'RunCommand' feature on a Virtual Machine, Threat Actor can pass PowerShell commands to the VM as SYSTEM account in Windows or pass Shell commands to the VM as root in Linux systems.Review run command activities for any suspicious ones. Link: https://microsoft.github.io/Azure-Threat-Research-Matrix/Execution/AZT301/AZT301-1/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "vmruncmdtxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "2b2ef744-a8eb-470b-8b65-ec58877f4446"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"microsoft.compute/virtualmachines/runcommand/action\", \"Microsoft.Compute/virtualMachineScaleSets/virtualMachines/runCommand/action\"]);\r\n// VM and VMSS Run Command\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "VM Run Commands",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "VM Run Commands",
+            "id": "6327477c-95ab-4fda-aafd-2c1ce110ab6d"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### VM Password Reset: By utilizing the 'password reset' feature on a Virtual Machine, Threat Actor can reset the password for local accounts in a VM and use it for persistance in your environment. Review for any suspecious password reset activities.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "vmruncmdtxt - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "3fb924eb-aad4-45ec-8612-b2fbd7cca8be"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| extend OperationNameValue\r\n| where OperationNameValue =~ \"MICROSOFT.RESOURCES/DEPLOYMENTS/VALIDATE/ACTION\"\r\n| where _ResourceId contains \"VMAccessWindowsPasswordReset\"\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatusValue, Caller, CallerIpAddress, _ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "VM Password Reset",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "VM Password Reset",
+            "id": "041614e6-5caf-4e6f-9085-45691afcc3cf"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### VM Disk SAS URI: VM Disks can be exported by utilizing SAS URI, By generating an SAS URI for a resource, an adversary may extract the contents of that resource without authentication at any time. Review for any SAS URI generation activities. Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Impact/AZT701/AZT701/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "vmruncmdtxt - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "028699b1-6aa6-4dd5-b96f-595ec029e741"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| extend OperationNameValue\r\n| where OperationNameValue =~ \"Microsoft.Compute/disks/BeginGetAccess/action\"\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatusValue, Caller, CallerIpAddress, _ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "VM Disk SAS URI",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "VM Disk SAS URI",
+            "id": "b32a96c7-4b03-415b-92cc-7ce7dffca0ba"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Serial Console Attack: By utilizing the serial console feature on an Azure Virtual Machine, an adversary can pass arbitrary commands. Review for any suspecious connection attempts by adversary. Link : https://microsoft.github.io/Azure-Threat-Research-Matrix/Execution/AZT301/AZT301-7/ , https://msrc.microsoft.com/blog/2023/08/azure-serial-console-attack-and-defense-part-1/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "serialconsoletxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "2c20434e-74b4-4db8-883d-93b0548d6364"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| extend OperationNameValue\r\n| where OperationNameValue =~ \"MICROSOFT.SERIALCONSOLE/SERIALPORTS/CONNECT/ACTION\"\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatusValue, Caller, CallerIpAddress, _ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "VM Serial Console Access",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "VM Serial Console Access",
+            "id": "f31a9df6-6039-4c66-8829-098605e1ae42"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### VM Disk Snapshot: Review who is taking the snapshot of your disks.Threat actor can use it for data exfiltration.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "VMdisksnapshottx",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "ac54589d-930f-471a-8125-681115aa90cc"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| extend OperationNameValue\r\n| where OperationNameValue =~ \"MICROSOFT.COMPUTE/SNAPSHOTS/WRITE\"\r\n//| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatusValue, Caller, CallerIpAddress, _ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "VM Disk Snapshot activity",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "VM Disk Snapshot activity",
+            "id": "7574bff3-a57c-449a-b9ca-7d4457dce5d3"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### AKS command invoke: By utilizing 'command invoke' on an Azure Kubernetes Service (AKS) cluster, Threat Actor can pass commands to the cluster's VM as SYSTEM account. Review for any unauthorized activities.  Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Execution/AZT301/AZT301-5/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "akscmdinvoketxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "54120fd0-a890-417c-b643-c9e8cab02276"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.ContainerService/managedClusters/runcommand/action\", \"Microsoft.ContainerService/managedclusters/commandResults/read\"]);\r\n// AKS\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n//| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "AKS Cluster Command Invoke",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "AKS Cluster Command Invoke",
+            "id": "6d5ad76a-74de-4e46-99aa-83e105212ad0"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### AppService WebJob: Adversaries may create a WebJob on a App Service which allows arbitrary background tasks to be run on a set schedule. Below table also lists any changes to the app services. Review for any suspecious ones. Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT503/AZT503-4/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "app"
+            },
+            "name": "appchangetxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "4d17f92d-c1e6-4858-8b70-edd2b20b77a0"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"microsoft.web/sites/delete\", \"microsoft.web/sites/config\", \"Microsoft.Web/sites/write\", \"Microsoft.Web/sites/start/action\",\"Microsoft.Web/sites/hostruntime/host/action\", \"Microsoft.Web/sites/hostruntime/vfs/run.csx/write\" ]);\r\n// App Services Changes\r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus,  Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "App Services Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "app"
+            },
+            "name": "App Services Changes",
+            "id": "bce3eb2c-984b-497e-a02a-96b2a84fe816"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Logic App HTTP Trigger: Adversaries may configure a Logic Application with a user account or managed identity and modify the HTTP trigger to run a command via HTTP request. Below table also lists any changes to the Logic app/ Playbooks. Review for any suspecious ones. Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT503/AZT503-1/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "app"
+            },
+            "name": "appchangetxt - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "8191ae58-8dae-40ee-90b6-73902073fdad"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Logic/workflows/write\", \"Microsoft.Logic/workflows/run/action\", \"Microsoft.Logic/operations/read\", \"Microsoft.Logic/locations/workflows/recommendOperationGroups/action\", \"Microsoft.Logic/workflows/triggers/listCallbackUrl/action\",\"Microsoft.Web/connections/write\"  ]);\r\n// Logic App \r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus,  Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Logic Application HTTP Trigger Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "app"
+            },
+            "name": "Logic Application HTTP Trigger Changes",
+            "id": "dd6a5db6-8982-4b79-b4be-f733bf68bf08"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Function App HTTP Trigger: Adversaries may configure a Function Application with a user account or managed identity and modify the HTTP trigger to run a command via HTTP request. Below table also lists any changes to the Function app. Review for any suspecious ones. Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT503/AZT503-2/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "app"
+            },
+            "name": "appchangetxt - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "018dad87-b5c1-4c74-8751-471e814add9f"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.web/sites/functions/action\",\"Microsoft.web/sites/functions/write\" ]);\r\n// Function App \r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus,  Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Function App HTTP Trigger Changes",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "app"
+            },
+            "name": "Function App HTTP Trigger Changes - Copy",
+            "id": "e7867171-190c-4cfe-8cdd-16e621a7ea9a"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Runbook Webhook: Adversaries may create a webhook to a Runbook which allows unauthenticated access into an Azure subscription or tenant. Below table also lists any changes to the automation accounts. Review for any suspecious ones. Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT503/AZT503-3/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "app"
+            },
+            "name": "appchangetxt - Copy - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "8119a549-31c1-4711-9d55-6607d307261c"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let opValues = dynamic([\"Microsoft.Automation/automationAccounts/runbooks/*\",\"Microsoft.Automation/automationAccounts/webhooks/write\" ]);\r\n// Runbook App \r\nAzureActivity\r\n| where OperationNameValue in~ (opValues)\r\n| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus,  Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Automation Account Runbook Webhook  Changes ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "app"
+            },
+            "name": "Automation Account Runbook Webhook  Changes ",
+            "id": "5918c647-48b3-489f-82ff-d4d321ee6519"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure Resource Role Change: Adversaries can perform privilege escalation attacks. Review who performed the role change and from which IP and when to detect any suspecious activities. ",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "rolechangetxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "500a2319-e9ef-4579-b514-ee867882983d"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "//let opValues = dynamic([\"microsoft.authorizations/elevateaccess/action\", \"microsoft.authorization/roleassignments/write\"]);\r\n// Role Changes\r\nAzureActivity\r\n//| where Category == \"Administrative\"\r\n//| where OperationNameValue in~ (opValues)\r\n//| where ActivitySubstatusValue in~ (\"Created\", \"OK\")\r\n//| sort by TimeGenerated desc\r\n//| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId\r\n| where OperationNameValue == \"MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE\" \r\n| extend Properties=parse_json(Properties) \r\n| extend requestbody = parse_json(tostring(parse_json(Properties).requestbody)) \r\n| extend PrincipalId= requestbody.Properties.PrincipalId \r\n| extend RoleDefinitionId= requestbody.Properties.RoleDefinitionId \r\n| extend Scope= requestbody.Properties.Scope \r\n| extend Entity = tostring(Properties.entity) \r\n| join kind=inner ( \r\nAzureActivity \r\n| where OperationNameValue == \"MICROSOFT.AUTHORIZATION/ROLEASSIGNMENTS/WRITE\" \r\n| where ActivityStatusValue != \"Start\" | extend Entity = tostring(parse_json(Properties).entity) ) on CorrelationId,Entity,OperationNameValue \r\n| project TimeGenerated,OperationNameValue,PrincipalId,RoleDefinitionId,FinalStatus = ActivityStatusValue1, Caller, Properties, CallerIpAddress\r\n",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure Resources Role Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "exportedParameters": [
+                    {
+                        "fieldName": "SubscriptionId",
+                        "parameterName": "SubscriptionId",
+                        "parameterType": 6,
+                        "defaultValue": "SubscriptionId"
+                    }
+                ],
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "Azure Resources Role Changes",
+            "id": "465922b0-b952-4c16-a72d-3f1bacb94ce9"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Subscription Coverage : Below table lists the subscriptions available in your tenant and shows if their Activity Logs are connected to this Log Analytics workspace under \"IsMonitored\" column. Review if all the subscriptions are connected to this workspace.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "listroles",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "964e8ac9-d1ec-4f7d-98af-96ded8295763"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let allsubscriptions=\r\narg(\"\").resourcecontainers\r\n| where type == \"microsoft.resources/subscriptions\"\r\n| distinct subscriptionId, name;\r\nallsubscriptions\r\n| join kind=leftouter (AzureActivity\r\n| extend AzureActivitySubscriptionId=SubscriptionId\r\n| distinct AzureActivitySubscriptionId)\r\non $left.subscriptionId==$right.AzureActivitySubscriptionId\r\n| extend IsMonitored= iff(isempty( AzureActivitySubscriptionId), \"No\", \"Yes\")\r\n| project subscriptionId, name, AzureActivitySubscriptionId, IsMonitored",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Azure Activity Log Connected to this Workspace",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "exportedParameters": [
+                    {
+                        "fieldName": "SubscriptionId",
+                        "parameterName": "SubscriptionId",
+                        "parameterType": 6,
+                        "defaultValue": "SubscriptionId"
+                    }
+                ],
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "Azure Activity Logs Coverage",
+            "id": "f3e36186-dab8-4cc3-8b78-276ade27d9dd"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Subscription Hijacking: Adversaries can move their subscription to another tenant. Review any movements. Reference https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT507/AZT507-3/ , https://techcommunity.microsoft.com/t5/microsoft-defender-xdr-blog/hunt-for-compromised-azure-subscriptions-using-microsoft/ba-p/3607121",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "listroles - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "1a2f7547-63d4-4ecb-be82-9c1858d1dd75"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where CategoryValue == \"Security\"\r\n| where Properties contains \"got moved from tenant\"",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Subscription Hijack",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "exportedParameters": [
+                    {
+                        "fieldName": "SubscriptionId",
+                        "parameterName": "SubscriptionId",
+                        "parameterType": 6,
+                        "defaultValue": "SubscriptionId"
+                    }
+                ],
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "Subscription Hijack",
+            "id": "98493be1-4d8c-4ce6-b787-651a9500d699"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Resource Group Movement: Below table shows the resources moved out of Resource Groups . Review any movements for any suspecious activites. Note you need to review any delete activities separately in the specified Resource Group to see which resource is moved out.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "listroles - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "3be9f781-b6ef-435d-911f-cd933ab2e3e2"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "//let opValues = dynamic([\"MICROSOFT.RESOURCES/SUBSCRIPTIONS/RESOURCEGROUPS/MOVERESOURCES/ACTION\"]);\r\nAzureActivity\r\n| where OperationNameValue =~ \"MICROSOFT.RESOURCES/SUBSCRIPTIONS/RESOURCEGROUPS/MOVERESOURCES/ACTION\"\r\n| where ActivityStatusValue == \"Success\"\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Resource Group Movement ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "exportedParameters": [
+                    {
+                        "fieldName": "SubscriptionId",
+                        "parameterName": "SubscriptionId",
+                        "parameterType": 6,
+                        "defaultValue": "SubscriptionId"
+                    }
+                ],
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "Resource Group Movement ",
+            "id": "f99af56e-1782-4d1a-9b68-3f4a9abdf1c4"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Cloud Shell Privilege Escalation: Below table shows the activities when cloudshell is used. Adversaries can perform privilege escalation by abusing the cloud shell files. Review who is using cloud shell.  Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/PrivilegeEscalation/AZT403/AZT403-1/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "listroles - Copy - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "45001cdf-0405-463b-bcae-6b58bdba7265"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "//let opValues = dynamic([\"MICROSOFT.RESOURCES/SUBSCRIPTIONS/RESOURCEGROUPS/MOVERESOURCES/ACTION\"]);\r\nAzureActivity \r\n| where ResourceGroup startswith \"CLOUD-SHELL\" \r\n| where ResourceProviderValue == \"MICROSOFT.STORAGE\" \r\n| where ActivityStatusValue == \"Start\" \r\n| extend action_ = tostring(parse_json(Authorization).action)\r\n | summarize count() by TimeGenerated , ResourceGroup , Caller , CallerIpAddress , ActivityStatusValue\r\n | extend AccountCustomEntity = Caller \r\n| extend IPCustomEntity = CallerIpAddress",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Cloud Shell Activity",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "exportedParameters": [
+                    {
+                        "fieldName": "SubscriptionId",
+                        "parameterName": "SubscriptionId",
+                        "parameterType": 6,
+                        "defaultValue": "SubscriptionId"
+                    }
+                ],
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "Cloud Shell Activity",
+            "id": "3271f99f-eaf4-4e4d-847c-3812c2012f06"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Management Group Changes: Below table shows the activities when Management Group is created or deleted. Review Changes to ManagementGroup.  Note: You need to enable Directory Activity Log Ingestion to Log Analytic Workspace. Reference:https://techcommunity.microsoft.com/discussions/azureobservability/how-to-monitor-new-management-group-creation-and-deletion-/4365710",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "Management Group Changes",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "ab82dec9-a36b-4b88-a515-a1b0013298cb"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where OperationNameValue in~ (\"MICROSOFT.MANAGEMENT/MANAGEMENTGROUPS/DELETE\",\"MICROSOFT.MANAGEMENT/MANAGEMENTGROUPS/WRITE\") \r\n| where ActivityStatusValue == \"Success\"\r\n| extend  mg = split(tostring(Properties_d.entity),\"/\")\r\n| project TimeGenerated, activityStatusValue_ = tostring(Properties_d.activityStatusValue), Managementgroup = mg[4], message_ = tostring(parse_json(Properties).message),\r\ncaller_ = tostring(Properties_d.caller)",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Changes in Management Group ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "exportedParameters": [
+                    {
+                        "fieldName": "SubscriptionId",
+                        "parameterName": "SubscriptionId",
+                        "parameterType": 6,
+                        "defaultValue": "SubscriptionId"
+                    }
+                ],
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "Management Group Activity ",
+            "id": "d2ddf900-b0be-4e76-9c68-59ddc9ab9fab"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### New Subscription: Below table shows the activities when a new Subscription is created. Review the Changes to Subscription.  Note: You need to enable Directory Activity Log Ingestion to Log Analytic Workspace. Reference:https://techcommunity.microsoft.com/discussions/azureobservability/how-to-monitor-new-management-group-creation-and-deletion-/4365710",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "New Subscription ",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "39c6e1d1-2fec-4a05-9990-7d6c12281994"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where OperationNameValue == \"Microsoft.Management\" and ActivityStatusValue == \"Succeeded\" and isnotempty(SubscriptionId)",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "New Subsciption Added",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "exportedParameters": [
+                    {
+                        "fieldName": "SubscriptionId",
+                        "parameterName": "SubscriptionId",
+                        "parameterType": 6,
+                        "defaultValue": "SubscriptionId"
+                    }
+                ],
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "account"
+            },
+            "name": "New Subscription",
+            "id": "442c7df4-a54f-40fb-9fc5-f0162f06ba33"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure Light House External Entity Access: Adversaries may utilize Azure Lighthouse to manage the target tenant from an external tenant. Review any Lighthouse Registration created. Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT507/AZT507-1/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "external"
+            },
+            "name": "lighthousetxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "d4ef05df-0d14-46e7-8a3f-0399c18fbff3"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where OperationNameValue =~ \"Microsoft.ManagedServices/registrationAssignments/Write\"\r\n| sort by TimeGenerated desc\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Lighthouse Registration Assignments by Service Provider",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "external"
+            },
+            "name": "Lighthouse Registration Assignments by Service Provider",
+            "id": "e207716e-21f8-43c7-bc09-7e450389e231"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure Light House External Entity Access: Adversaries may utilize Azure Lighthouse to manage the target tenant from an external tenant. Review available Lighthouse Registration in your environment. Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT507/AZT507-1/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "external"
+            },
+            "name": "lighthousetxt - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "9bd00c76-7525-441b-8476-3f3f622fc42b"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "ManagedServicesResources\r\n| where type== \"microsoft.managedservices/registrationassignments\"",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "List of Lighthouse Registration Assignments by Service Provider",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 1,
+                "resourceType": "microsoft.resourcegraph/resources",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "external"
+            },
+            "name": "List of Lighthouse Registration Assignments by Service Provider - Copy",
+            "id": "796bf8ab-4193-431e-95b0-4cf557cf4867"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### External User Activities: Adversaries may utilize compromised External Accounts.  Review activities performed by external users from other tenants. Note: You need to add your Domain Name as Home Tenant Domain in the query in edit mode.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "external"
+            },
+            "name": "lighthousetxt - Copy - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "10309342-c4ed-462f-b1f6-7f0f187a80c9"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "//Provide your Tenant Domain (example contoso.com)\r\nlet Hometenantdomain = dynamic([\"TENANT_DOMAIN_VALUE\"]);\r\nAzureActivity\r\n| where Caller !contains Hometenantdomain\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated desc\r\n| where parse_json(Claims).idtyp <> \"app\"\r\n| project     TimeGenerated,  OperationName,  OperationNameValue, ActivityStatus,  Caller,  CallerIpAddress, \r\n    ResourceId,     ResourceGroup,     SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Activities performed by Guest Users(Provide your Home Tenant Domain in the Query) ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "external"
+            },
+            "name": "Activities performed by Guest Users ",
+            "id": "ff35912e-de03-4ba9-bc16-8e038c70d585"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### External User Activities: Adversaries may utilize Azure Lighthouse to manage the target tenant from an external tenant. Review activities performed by external users (Like CSP/Lighthouse users)  from other tenants. Note: You need to add your tenant ID as Home Tenant ID in the query in edit mode.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "external"
+            },
+            "name": "lighthousetxt - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "f5caf257-3779-4209-9455-a6b1f858b32b"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let HomeTenantId = \"Provide your Azure AD Tenant ID HERE\";\r\n//example HomeTenantId= \"8756erxyz-xxxxx-xxxx-xxxx\"\r\nAzureActivity\r\n| extend TenantId = todynamic(Claims).['http://schemas.microsoft.com/identity/claims/tenantid']\r\n| where TenantId != HomeTenantId\r\n| where isnotempty( TenantId )\r\n| where ActivitySubstatusValue in (\"Created\", \"OK\")\r\n| sort by TimeGenerated\r\n| project TimeGenerated, OperationName, OperationNameValue, ActivityStatus, TenantId , Caller, CallerIpAddress, ResourceId, ResourceGroup, SubscriptionId",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Activities performed by external Lighthouse (CSP/MSP) Users (Provide your Home Tenant ID in the Query)  ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "external"
+            },
+            "name": "Activities performed by external CSP/MSP Users ",
+            "id": "9d44337f-bb6c-4363-a776-1ac20775ce53"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Network Port Changes:Adversaries can modify the network ports across firewall rules and NSG rules to establish unauthorized access.Review the changes and who performed it from which IP.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT506/AZT506/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "network"
+            },
+            "name": "nwportchangetxt ",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "1d153848-2925-41ff-8bd6-8e486f93c90c"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AzureActivity\r\n| where OperationNameValue has_any (\"ipfilterrules\", \"securityRules\", \"publicIPAddresses\", \"firewallrules\") and OperationNameValue endswith \"write\"\r\n// Choosing Accepted here because it has the Rule Attributes included\r\n| where ActivityStatusValue == \"Accepted\" \r\n// If there is publicIP info, include it\r\n| extend publicIPAddress_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).ipAddress) \r\n| extend publicIPAddressVersion_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).publicIPAddressVersion) \r\n| extend publicIPAllocationMethod_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).publicIPAllocationMethod) \r\n// Include rule attributes for context\r\n| extend access = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).access) \r\n| extend description = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).description) \r\n| extend destinationPortRange = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).destinationPortRange) \r\n| extend direction = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).direction) \r\n| extend protocol = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).protocol) \r\n| extend sourcePortRange = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).sourcePortRange) \r\n| summarize StartTime = min(TimeGenerated), EndTime = max(TimeGenerated), ResourceIds = makeset(ResourceId) by Caller, CallerIpAddress, Resource, ResourceGroup, \r\nActivityStatusValue, ActivitySubstatus, SubscriptionId, access, description, destinationPortRange, direction, protocol, sourcePortRange  \r\n| extend timestamp = StartTime, AccountCustomEntity = Caller, IPCustomEntity = CallerIpAddress\r\n\r\n",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "Network port changes ",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "network"
+            },
+            "name": "Network port changes ",
+            "id": "69732648-6d14-4bff-9d44-4f0a7bc2ae4a"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### VM Public IP Assignment Changes: Threat Actor can assign Public IP to a VM and expose it to internet for any unauthorized access. Review the Public IP changes in your environment.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "vmpubliciptxt",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "59d295b3-a845-4525-a480-de5379aa49ef"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let OperationNames = dynamic([\"microsoft.compute/virtualMachines/write\", \"microsoft.resources/deployments/write\"]);\r\nAzureActivity\r\n// We look for any Operation that modified and then was accepted or succeeded where a publicipaddress component is referenced\r\n| where OperationNameValue in~ (OperationNames)\r\n| where ActivityStatusValue has_any (\"Succeeded\", \"Accepted\")\r\n| where Properties contains \"publicipaddress\"\r\n//| extend frontendIPConfigurations = Properties.responseBody.properties.frontendIPConfigurations\r\n// parsing the publicIPAddress from Properties. It is only available if the allocation method is Static.\r\n| parse Properties with * \"publicIPAddress\\\\\" PublicIPAddressParse\r\n| extend publicIPAddress_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).ipAddress) \r\n| extend publicIPAddressVersion_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).publicIPAddressVersion) \r\n| extend publicIPAllocationMethod_ = tostring(parse_json(tostring(parse_json(tostring(parse_json(Properties).responseBody)).properties)).publicIPAllocationMethod) \r\n| extend scope_ = tostring(parse_json(Authorization).scope) \r\n| project\r\n    TimeGenerated,\r\n    OperationNameValue,\r\n    publicIPAllocationMethod_,\r\n    publicIPAddressVersion_,\r\n    scope_,\r\n    Caller,\r\n    CallerIpAddress,\r\n    ActivityStatusValue,\r\n    Resource \r\n",
+                "size": 1,
+                "showAnalytics": true,
+                "title": "VM Public IP Assignment Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showRefreshButton": true,
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "compute"
+            },
+            "name": "VM Public IP Assignment Changes",
+            "id": "f1f6c778-211c-496d-80c3-08785df36ab5"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Consent to Malicious Application: Threat Actor may lure a victim into giving their access to a malicious application registered in AzureAD. Review the Consent permissions and Target resource.  in your environment.Reference:  https://microsoft.github.io/Azure-Threat-Research-Matrix/InitialAccess/AZT203/AZT203/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "vmpubliciptxt - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "7bad492d-6716-40a5-ba79-a05d4c4ce770"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "    AuditLogs\r\n    | where OperationName has \"Consent to application\"\r\n    | extend\r\n        Actor = tostring(InitiatedBy.user.userPrincipalName),\r\n        ActorId = tostring(InitiatedBy.user.id),\r\n        ActorIPAddress = tostring(InitiatedBy.user.ipAddress)\r\n    | mv-expand TargetResource = TargetResources\r\n    | extend\r\n        AppDisplayName = tostring(TargetResource.displayName),\r\n        AppServicePrincipalId = tostring(TargetResource.id)\r\n    | mv-apply Properties = TargetResource.modifiedProperties on (\r\n        summarize BagToUnpack = make_bag(pack(tostring(Properties.displayName), pack(\"oldValue\", Properties.oldValue, \"newValue\", Properties.newValue)))\r\n        )\r\n    | evaluate bag_unpack(BagToUnpack, columnsConflict='replace_source')\r\n    | extend\r\n        AdminConsent = trim(@'[\\\"\\s]+', tostring(column_ifexists(\"ConsentContext.IsAdminConsent\", dynamic(null)).newValue)),\r\n        OnBehalfOfAllUsers = trim(@'[\\\"\\s]+', tostring(column_ifexists(\"ConsentContext.OnBehalfOfAll\", dynamic(null)).newValue)),\r\n        AppId = extract(@\"([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\", 1, trim(@'[\\\"\\s]+', tostring(column_ifexists(\"TargetId.ServicePrincipalNames\", dynamic(null)).newValue))),\r\n        Permissions = extract_all(@\"PrincipalId: ([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})?, ResourceId: ([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}), ConsentType:\\s+(\\w+), Scope:\\s+([^,]+)\", extract(@\"\\=\\>\\s+(.*)\", 1, tostring(column_ifexists(\"ConsentAction.Permissions\", \"\"))))\r\n    | mv-apply Permissions on (\r\n        extend\r\n            TargetId = tostring(Permissions[0]),\r\n            PermissionsResourceId = tostring(Permissions[1]),\r\n            ConsentType = tostring(Permissions[2]),\r\n            Scope = split(Permissions[3], ' ')\r\n        | mv-expand Scope\r\n        | summarize Permissions = array_sort_asc(make_set(Scope)) by ConsentType, TargetId, PermissionsResourceId\r\n        )\r\n    | extend Target = iff(TargetId == ActorId, Actor, \"\")\r\n",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Consent to Application",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "applicationconsent",
+            "id": "c9c127b8-3ae0-4c15-a7ca-f9033a82998f"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Privileged Role Activation: An adversary may escalate their privileges if their current account is eligible for role activation via Privileged Identity Management (PIM). Review the PIM Role Activations in your environment.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/PrivilegeEscalation/AZT401/AZT401/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "vmpubliciptxt - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "18d49bbb-11dd-4886-ae59-3bced11dfff6"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where OperationName in~  (\"Add member to role completed (PIM activation)\", \"Add member to role outside of PIM\")\r\n//| extend User = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)\r\n//| extend ['Azure AD Role Name'] = tostring(TargetResources[0].displayName)\r\n//| project TimeGenerated, User, ['Azure AD Role Name'], ['Activation Reason']=ResultReason\r\n| extend RoleName = tostring(TargetResources[0].displayName)\r\n| extend UserAdded = tostring(TargetResources[2].displayName)\r\n| extend Actor = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)\r\n| project TimeGenerated, OperationName, RoleName, UserAdded, Actor, ['Activation Reason']=ResultReason",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Privileged Role Activation",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "PIMRoleActivation",
+            "id": "ffd148c7-5ec9-47fb-97a3-d264d1112d1e"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Azure RBAC Elevate Access: An adversary may escalate their privileges from Azure AD to all Azure subscriptions in the tenant if they are a global administrator. Review the Elevate Access Activations in your environment.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/PrivilegeEscalation/AZT402/AZT402/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "ElevateAccess",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "512a0363-f5a4-4c24-9ad4-2efb62e964bb"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where Category =~ \"AzureRBACRoleManagementElevateAccess\"\r\n| where ActivityDisplayName =~ \"User has elevated their access to User Access Administrator for their Azure Resources\"\r\n| extend Actor = tostring(InitiatedBy.user.userPrincipalName)\r\n| extend IPAddress = tostring(InitiatedBy.user.ipAddress) \r\n| project TimeGenerated,  Actor,  OperationName, IPAddress,  Result, LoggedByService",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Azure RBAC Elevate Access",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "ElevateAccess",
+            "id": "b8690dcd-553a-410a-af8c-f2614fb69c6d"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Update Permission: An adversary may add permissions to Applications for persistence.  Review the permissions added to Applications in  your environment.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/PrivilegeEscalation/AZT405/AZT405/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "ElevateAccess - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "c3713daa-414f-49cf-ae07-b896d2577e8a"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "let delegatedaccess=\r\n    AuditLogs\r\n    | where OperationName has \"Add delegated permission grant\"\r\n    | extend x = tostring(parse_json(tostring(parse_json(tostring(TargetResources[0].modifiedProperties))[0].newValue)))\r\n    | extend ['Permissions granted'] = split(x, ' ')\r\n    | extend Actor = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)\r\n    | extend ['Service Principal ObjectId'] = tostring(TargetResources[1].id)\r\n    | extend Activity = strcat(\"Delegated access added to application\")\r\n    | project\r\n        TimeGenerated,\r\n        Activity,\r\n        ['Permissions granted'],\r\n        ['Service Principal ObjectId'],\r\n        Actor;\r\nlet appaccess=\r\n    AuditLogs\r\n    | where OperationName has \"Add app role assignment to service principal\"\r\n    | extend x = tostring(parse_json(tostring(parse_json(tostring(TargetResources[0].modifiedProperties))[1].newValue)))\r\n    | extend ['Permissions granted'] = split(x, ' ')\r\n    | extend Actor = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)\r\n    | extend Activity = strcat(\"Application access added to application\")\r\n    | extend ['Service Principal ObjectId'] = tostring(TargetResources[1].id)\r\n    | project\r\n        TimeGenerated,\r\n        Activity,\r\n        ['Permissions granted'],\r\n        ['Service Principal ObjectId'],\r\n        Actor;\r\nunion delegatedaccess, appaccess",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Add Application or delegated permission",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Add Application Permission",
+            "id": "cf967b1e-1b8f-4e58-9ccf-0391d6b43b11"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Update certificates or secrets: An adversary may update certificates or secrets to Applications for persistence.  Review the update to certificates or secrets in Applications in  your environment.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/PrivilegeEscalation/AZT405/AZT405/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "ElevateAccess - Copy - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "183641d0-eacc-4c4d-96cc-6eb0c5df2179"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where Category == \"ApplicationManagement\"\r\n| where OperationName == \"Update application – Certificates and secrets management \"\r\n| where Result == \"success\"\r\n| extend UserPrincipalName = InitiatedBy.user.userPrincipalName\r\n| extend IPAddress = InitiatedBy.user.ipAddress\r\n| extend AppDisplayName = TargetResources[0].displayName\r\n| extend UserAgent = AdditionalDetails[0].value\r\n| project TimeGenerated, UserPrincipalName, OperationName, IPAddress, AppDisplayName, UserAgent\r\n",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Update application – Certificates and secrets management",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Update certficates or secrets",
+            "id": "56c88f06-5dea-44f8-b018-761aa283e8f0"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Update Security Info:An adversary may update security Info (MFA Method) for persistence.  Review the Security Info changes in  your environment.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT501/AZT501/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "ElevateAccess - Copy - Copy - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "bc688e84-5bd3-4ca2-810d-2fa76cc51e23"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where OperationName in~ (\"Admin registered security info\", \"Admin updated security info\", \"Admin deleted security info\", \"User registered security info\", \"User changed default security info\", \"User deleted security info\")\r\n| extend UserPrincipalName = tostring(TargetResources[0].userPrincipalName)\r\n| project TimeGenerated, OperationName, UserPrincipalName",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Security Info Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Security Info Changes",
+            "id": "e522e05b-db35-4703-9f06-e7d40f9a0cc5"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### TAP Registration: An adversary may create Temporary Access Password (TAP)  for persistence.  Review the TAP changes in  your environment.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT501/AZT501/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "TAP",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "cebebf1c-440c-4b25-8130-b48965f46363"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where OperationName in~ (\"Admin registered security info\", \"Admin updated security info\", \"Admin deleted security info\", \"User registered security info\", \"User changed default security info\", \"User deleted security info\")\r\n| extend UserPrincipalName = tostring(TargetResources[0].userPrincipalName)\r\n| project TimeGenerated, OperationName, UserPrincipalName",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Temporary Access Password Registration",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "TAP",
+            "id": "a68154cc-008a-413c-ab03-5f2104c7fcf0"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### CA Policy Manipulation: An adversary may update Conditional Access Policy for persistence.  Review the CA Policy changes in  your environment.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "CA Policy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "ae3dc951-41cb-46f5-b6e7-97158c781c0a"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where TimeGenerated > ago(1d)\r\n| where OperationName in (\"Update conditional access policy\", \"Add conditional access policy\", \"Delete conditional access policy\")\r\n| extend Actor = tostring(parse_json(tostring(InitiatedBy.user)).userPrincipalName)\r\n| extend ['Policy Name'] = tostring(TargetResources[0].displayName)\r\n| extend ['Policy Id'] = tostring(TargetResources[0].id)\r\n| project TimeGenerated, Actor, ['Policy Name'], ['Policy Id']",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Conditional Access policy Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Conditional Access policy Changes",
+            "id": "dc29b019-1266-46b4-b755-1e75fd015a84"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Account Manipulation- An adversary may update user properties for disguise or persistence.  Review the changes to  Users properties  in  your environment.Reference- https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT501/AZT501/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "CA Policy - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "282643ba-dde3-42e6-9aac-0a5fa2a06aa3"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where Category == \"UserManagement\"// and OperationName has_any (\"Update user\")\r\n//| where TargetResources has_any (\"Guest\", \"#EXT#\")\r\n| mv-expand TargetResource = TargetResources\r\n| where TargetResource[\"type\"] == \"User\"\r\n| mv-apply modifiedProperty = TargetResource[\"modifiedProperties\"] on (\r\n    summarize modifiedProperties = make_bag(\r\n        bag_pack(tostring(modifiedProperty[\"displayName\"]),\r\n            bag_pack(\"oldValue\", trim(@'[\\\"\\s]+', tostring(modifiedProperty[\"oldValue\"])),\r\n                \"newValue\", trim(@'[\\\"\\s]+', tostring(modifiedProperty[\"newValue\"])))))\r\n    )\r\n| where case(\r\n    isnotempty(modifiedProperties[\"TargetId.UserType\"][\"oldValue\"]) and tostring(modifiedProperties[\"TargetId.UserType\"][\"oldValue\"]) != tostring(modifiedProperties[\"TargetId.UserType\"][\"newValue\"]), true,\r\n    tostring(modifiedProperties[\"UserType\"][\"oldValue\"]) != \"[]\" and tostring(modifiedProperties[\"UserType\"][\"oldValue\"]) != tostring(modifiedProperties[\"UserType\"][\"newValue\"]), true,\r\n    tostring(modifiedProperties[\"UserPrincipalName\"][\"oldValue\"]) != \"[]\" and tostring(modifiedProperties[\"UserPrincipalName\"][\"oldValue\"]) != tostring(modifiedProperties[\"UserPrincipalName\"][\"newValue\"]), true,\r\n    false\r\n)\r\n| extend\r\n    Initiator = iif(isnotempty(InitiatedBy[\"app\"]), tostring(InitiatedBy[\"app\"][\"displayName\"]), tostring(InitiatedBy[\"user\"][\"userPrincipalName\"])),\r\n    InitiatorId = iif(isnotempty(InitiatedBy[\"app\"]), tostring(InitiatedBy[\"app\"][\"servicePrincipalId\"]), tostring(InitiatedBy[\"user\"][\"id\"])),\r\n    IPAddress = tostring(InitiatedBy[tostring(bag_keys(InitiatedBy)[0])][\"ipAddress\"]),\r\n    TargetUserPrincipalName = tostring(TargetResource[\"userPrincipalName\"]),\r\n    TargetId = tostring(TargetResource[\"id\"])\r\n| project\r\n    TimeGenerated,\r\n    Category,\r\n    Identity,\r\n    Initiator,\r\n    IPAddress,\r\n    OperationName,\r\n    Result,\r\n    TargetUserPrincipalName,\r\n    InitiatorId,\r\n    TargetId,\r\n    InitiatedBy,\r\n    AdditionalDetails,\r\n    TargetResources,\r\n    CorrelationId",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Review Modified Properties for User Account ",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "User Properties Update ",
+            "id": "7e960364-3762-44c3-8ac2-33b2d8824c6b"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Account Creation- An adversary may create account for disguise or persistence purpose.  Review the changes to  accounts  in  your environment.Reference- https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT502/AZT502/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "CA Policy - Copy - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "2de07962-3982-4c49-b5cd-5d631affca98"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where OperationName =~ \"Add service principal\"\r\n| extend Actor = tostring(parse_json(tostring(InitiatedBy.app)).displayName)\r\n| extend ['Service Principal DisplayName'] = tostring(TargetResources[0].displayName)\r\n| extend ['Service Principal Id'] = tostring(TargetResources[0].id)\r\n| project TimeGenerated, ['Service Principal DisplayName'], ['Service Principal Id'], Actor",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Review Service Principal Added",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Add Service Principal",
+            "id": "8420b447-ecf4-4434-ac74-f8fbba8be61d"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Account Creation- An adversary may create account for disguise or persistence purpose.  Review the changes to  accounts  in  your environment.Reference- https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT502/AZT502/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "CA Policy - Copy - Copy - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "05c345c9-1bef-46e5-828a-071203dc2b3a"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where OperationName =~ \"Add user\"\r\n| extend Actor = tostring(parse_json(tostring(InitiatedBy.app)).displayName)\r\n| extend ['Service Principal DisplayName'] = tostring(TargetResources[0].displayName)\r\n| extend ['Service Principal Id'] = tostring(TargetResources[0].id)\r\n| project TimeGenerated, ['Service Principal DisplayName'], ['Service Principal Id'], Actor",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Review User Accounts Added",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Add Service Principal - Copy",
+            "id": "5bd8fae1-abb3-4e16-b95d-4d2c512ab3a2"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Account Creation- An adversary may add Guest Users for persistence.  Review the Guest Users invite in  your environment.Reference: https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT502/AZT502-3/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "CA Policy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "73bbfba4-8ecd-4978-94b3-804aa396d61a"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where OperationName in (\"Redeem external user invite\", \"Invite external user\")",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Guest User Invite Activity",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Guest User Invite",
+            "id": "a99b0234-25f4-48ef-bf96-7bbbb3384496"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Account Creation- An adversary may create application for disguise or persistence purpose.  Review the changes to  application  in  your environment.Reference- https://microsoft.github.io/Azure-Threat-Research-Matrix/Persistence/AZT502/AZT502/",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "ElevateAccess - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "d1503a52-0139-4f48-bf7d-220a0448cc7d"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where TimeGenerated > ago(7d)\r\n| where Category == \"ApplicationManagement\"\r\n| where OperationName == \"Add application\"\r\n| where Result == \"success\"\r\n| extend UserPrincipalName = InitiatedBy.user.userPrincipalName\r\n| extend UserId = tostring(InitiatedBy.user.id)\r\n| extend IPAddress = InitiatedBy.user.ipAddress\r\n| extend AppDisplayName = TargetResources[0].displayName\r\n| extend UserAgent = AdditionalDetails[0].value\r\n//| join kind=leftouter ( \r\n   // AADUserRiskEvents\r\n   // | where TimeGenerated >ago(7d)\r\n  //  | summarize Risks = make_set(RiskEventType), FirstRisk = min(TimeGenerated), LastRisk = max(TimeGenerated) by UserId\r\n//) on UserId\r\n//| project TimeGenerated, UserId, IPAddress, AppDisplayName, UserAgent, Risks, FirstRisk, LastRisk\r\n| project TimeGenerated, UserId, IPAddress, AppDisplayName, UserAgent",
+                "size": 0,
+                "showAnalytics": true,
+                "title": "Add Application",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Add Application",
+            "id": "c9b718ed-e40f-4e85-8537-f2ad3d766612"
+        },
+        {
+            "type": 1,
+            "content": {
+                "json": "#### Rogue Device Registration- An adversary may register rogue devices for persistence purpose.  Review the device registration changes  in  your environment.",
+                "style": "warning"
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "ElevateAccess - Copy - Copy",
+            "styleSettings": {
+                "showBorder": true
+            },
+            "id": "08f5084b-2b7a-4c00-a904-e26f59da4a06"
+        },
+        {
+            "type": 3,
+            "content": {
+                "version": "KqlItem/1.0",
+                "query": "AuditLogs\r\n| where OperationName in~ (\"Register device\", \"Unregister device\")",
+                "size": 0,
+                "showAnalytics": true,
+                "title": " Device Regitration Changes",
+                "timeContextFromParameter": "TimeRange",
+                "showExportToExcel": true,
+                "queryType": 0,
+                "resourceType": "microsoft.operationalinsights/workspaces",
+                "crossComponentResources": [
+                    "{Workspace}"
+                ]
+            },
+            "conditionalVisibility": {
+                "parameterName": "wbtab",
+                "comparison": "isEqualTo",
+                "value": "identity"
+            },
+            "name": "Rogue Device regitration",
+            "id": "6b17e01f-19f8-493d-9b11-926c5b502ea5"
+        }
+    ],
+    "fallbackResourceIds": [
+        "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourcegroups/sentinel/providers/microsoft.operationalinsights/workspaces/sentinelloganalyticsworkspace"
+    ],
+    "fromTemplateId": "sentinel-UserWorkbook",
+    "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
+    "context": {
+        "ownerId": "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourceGroups/sentinel/providers/Microsoft.OperationalInsights/workspaces/SentinelLogAnalyticsWorkspace"
+    }
+}
