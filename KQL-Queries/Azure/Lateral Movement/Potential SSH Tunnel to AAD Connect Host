@@ -1,0 +1,4 @@
+  DeviceInfo
+  | where LoggedOnUsers has "MSOL_"
+  | join kind=inner (_Im_NetworkSession
+  | where NetworkApplicationProtocol =~ "ssh") on $left.PublicIP == $right.DstIpAddr
