@@ -1,0 +1,27 @@
+AuditLogs
+    | where Category =~ "ApplicationManagement"
+    | where Result =~ "success"
+    | where OperationName =~ 'Update Application'
+    | where TargetResources has "AppAddress"
+    | mv-expand TargetResources
+    | mv-expand TargetResources.modifiedProperties
+    | where TargetResources_modifiedProperties.displayName =~ "AppAddress"
+    | extend Key = tostring(TargetResources_modifiedProperties.displayName)
+    | extend NewValue = TargetResources_modifiedProperties.newValue
+    | extend OldValue = TargetResources_modifiedProperties.oldValue
+    | where isnotempty(Key) and isnotempty(NewValue)
+    | project-reorder Key, NewValue, OldValue
+    | extend NewUrls = extract_all('"Address":([^,]*)', tostring(NewValue))
+    | extend OldUrls = extract_all('"Address":([^,]*)', tostring(OldValue))
+    | extend AddedUrls = set_difference(NewUrls, OldUrls)
+    | where array_length(AddedUrls) > 0
+    | extend UserAgent = iif(tostring(AdditionalDetails[0].key) == "User-Agent", tostring(AdditionalDetails[0].value), "")
+    | extend InitiatingAppName = tostring(InitiatedBy.app.displayName)
+    | extend InitiatingAppServicePrincipalId = tostring(InitiatedBy.app.servicePrincipalId)
+    | extend InitiatingUserPrincipalName = tostring(InitiatedBy.user.userPrincipalName)
+    | extend InitiatingAadUserId = tostring(InitiatedBy.user.id)
+    | extend InitiatingIPAddress = tostring(InitiatedBy.user.ipAddress)
+    | extend AddedBy = iif(isnotempty(InitiatingUserPrincipalName), InitiatingUserPrincipalName, InitiatingAppName)
+    | extend TargetAppName = tostring(TargetResources.displayName)
+    | extend InitiatingAccountName = tostring(split(InitiatingUserPrincipalName, "@")[0]), InitiatingAccountUPNSuffix = tostring(split(InitiatingUserPrincipalName, "@")[1])
+    | project-reorder TimeGenerated, TargetAppName, InitiatingAppName, InitiatingAppServicePrincipalId, InitiatingUserPrincipalName, InitiatingAadUserId, InitiatingIPAddress, AddedUrls, AddedBy, UserAgent
