@@ -24,7 +24,7 @@
                         "quote": "'",
                         "delimiter": ",",
                         "value": [
-                            "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9"
+                            "/subscriptions/x"
                         ],
                         "typeSettings": {
                             "additionalResourceOptions": [
@@ -52,7 +52,7 @@
                             "{Subscription}"
                         ],
                         "value": [
-                            "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourceGroups/sentinel/providers/Microsoft.OperationalInsights/workspaces/SentinelLogAnalyticsWorkspace"
+                            "/subscriptions/x/resourceGroups/sentinel/providers/Microsoft.OperationalInsights/workspaces/SentinelLogAnalyticsWorkspace"
                         ],
                         "typeSettings": {
                             "additionalResourceOptions": [
@@ -2515,7 +2515,7 @@
         }
     ],
     "fallbackResourceIds": [
-        "/subscriptions/26728e66-48b5-4936-a185-943b52f974a9/resourcegroups/sentinel/providers/microsoft.operationalinsights/workspaces/sentinelloganalyticsworkspace"
+        "/subscriptions/x/resourcegroups/sentinel/providers/microsoft.operationalinsights/workspaces/sentinelloganalyticsworkspace"
     ],
     "fromTemplateId": "sentinel-UserWorkbook",
     "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json",
