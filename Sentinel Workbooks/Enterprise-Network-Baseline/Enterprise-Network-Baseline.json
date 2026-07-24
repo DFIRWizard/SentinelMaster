@@ -1,0 +1,553 @@
+{
+    "version": "Notebook/1.0",
+    "items": [
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "📖 Read Me",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "# Microsoft Sentinel – Enterprise Network Behavior Baseline\n\n## Purpose\nThis workbook operationalizes the enterprise network baseline established through threat hunting. It highlights behavioral changes that may require analyst review rather than treating every deviation as malicious.\n\n## Core Questions\n- Has total network activity significantly changed?\n- Did a new external destination appear?\n- Did an uncommon process begin communicating?\n- Did PowerShell, Python, or another scripting engine spike?\n- Did a LOLBin communicate externally?\n- Did a new remote administration tool appear?\n- Did a new or uncommon port appear?\n\n## Primary Data Source\n**Microsoft Defender XDR Advanced Hunting**\n- `DeviceNetworkEvents`\n\n## How to Use\n1. Start with **Executive Overview**.\n2. Review metrics marked **Needs Review** or **Investigate**.\n3. Use detailed sections to identify device, user, process, destination, and time.\n4. Validate deviations against approved business activity.\n5. Document findings and tune the workbook as the environment changes.\n\n> Deviations are analyst review items, not automatically incidents.\n\n\n## Time Logic\n\n- Standard charts and tables use the selected **Current period** parameter.\n- Baseline deviation calculations use the **most recent 7 days** as the current comparison period.\n- Those 7 days are compared with the immediately preceding number of days configured in **Reference baseline days**.\n\n## Public Template Notice\n\n- This workbook contains no fixed tenant, subscription, resource group, or workspace references.\n- Customize remote-administration tool approval statuses, domain exclusions, thresholds, and filters before operational use.\n"
+                        },
+                        "name": "README",
+                        "id": "27f25828-e935-49fb-9d29-ff8afc6505b3"
+                    }
+                ]
+            },
+            "name": "Read Me",
+            "id": "def9f5fa-9565-4b03-9082-84c5f5abf3df"
+        },
+        {
+            "type": 9,
+            "content": {
+                "version": "KqlParameterItem/1.0",
+                "parameters": [
+                    {
+                        "id": "d77e26af-f3b5-47b5-b588-427890b3934b",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "TimeRange",
+                        "label": "Current period",
+                        "type": 4,
+                        "isRequired": true,
+                        "value": {
+                            "durationMs": 1209600000
+                        },
+                        "typeSettings": {
+                            "selectableValues": [
+                                {
+                                    "durationMs": 86400000
+                                },
+                                {
+                                    "durationMs": 259200000
+                                },
+                                {
+                                    "durationMs": 604800000
+                                },
+                                {
+                                    "durationMs": 1209600000
+                                },
+                                {
+                                    "durationMs": 2592000000
+                                }
+                            ],
+                            "allowCustom": true
+                        }
+                    },
+                    {
+                        "id": "a5d46a89-9b64-442d-81fd-dfa1373a4c36",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "BaselineDays",
+                        "label": "Reference baseline days",
+                        "type": 1,
+                        "isRequired": true,
+                        "value": "30"
+                    },
+                    {
+                        "id": "26b95cb8-f461-46c9-8d9f-c32752c7a3b6",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "RareDeviceThreshold",
+                        "label": "Rare process/device threshold",
+                        "type": 1,
+                        "isRequired": true,
+                        "value": "3"
+                    },
+                    {
+                        "id": "ca2437c1-af02-47fe-b690-b79475eec4a0",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "SpikePercentThreshold",
+                        "label": "Process spike threshold (%)",
+                        "type": 1,
+                        "isRequired": true,
+                        "value": "100"
+                    },
+                    {
+                        "id": "c3d5f95c-c0ab-44eb-bafe-d19f5917a979",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "DeviceFilter",
+                        "label": "Device contains",
+                        "type": 1,
+                        "isRequired": false,
+                        "value": ""
+                    },
+                    {
+                        "id": "868fbd6e-25ea-416d-9c3c-85c16e20a347",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "ProcessFilter",
+                        "label": "Process contains",
+                        "type": 1,
+                        "isRequired": false,
+                        "value": ""
+                    },
+                    {
+                        "id": "1a95ac91-195b-4f2f-8165-3f256bfb8733",
+                        "version": "KqlParameterItem/1.0",
+                        "name": "DomainFilter",
+                        "label": "Remote domain contains",
+                        "type": 1,
+                        "isRequired": false,
+                        "value": ""
+                    }
+                ],
+                "style": "pills"
+            },
+            "name": "Global Filters",
+            "id": "49b38b8a-90a7-4aec-b31c-2a1c80040761"
+        },
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "📊 1. Executive Overview",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "### Executive Overview\n\nAnswers one question: **What changed that requires analyst attention?**"
+                        },
+                        "name": "Intro",
+                        "id": "34710889-5564-433c-a6be-ebeecabe049d"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "let CurrentDays = 7;\nlet BaselineDays = toint('{BaselineDays}');\nlet RareDeviceThreshold = toint('{RareDeviceThreshold}');\n\nlet CurrentStart = ago(CurrentDays * 1d);\nlet BaselineStart = ago((CurrentDays + BaselineDays) * 1d);\nlet BaselineEnd = CurrentStart;\n\n// Example infrastructure exclusions — customize for your environment\nlet ExcludedDomains = dynamic([\n    \"windowsupdate.com\",\n    \"update.microsoft.com\",\n    \"trafficrouter.communications.svc.cloud.microsoft\",\n    \"wvd.microsoft.com\",\n    \"localhost\"\n]);\n\nlet RemoteTools = datatable(\n    InitiatingProcessFileName:string,\n    ToolName:string,\n    ApprovalStatus:string\n)\n[\n    \"approved-rmm-agent.exe\",           \"Approved RMM (Customize)\", \"Approved\",\n    \"screenconnect.clientservice.exe\",  \"ScreenConnect\",  \"Needs Review\",\n    \"screenconnect.windowsclient.exe\",  \"ScreenConnect\",  \"Needs Review\",\n\n    \"quickassist.exe\",                  \"Quick Assist\",   \"Unapproved\",\n    \"anydesk.exe\",                      \"AnyDesk\",        \"Unapproved\",\n    \"teamviewer.exe\",                   \"TeamViewer\",     \"Unapproved\",\n    \"teamviewer_service.exe\",           \"TeamViewer\",     \"Unapproved\",\n    \"rustdesk.exe\",                     \"RustDesk\",       \"Unapproved\",\n    \"winvnc.exe\",                       \"VNC\",            \"Unapproved\",\n    \"vncviewer.exe\",                    \"VNC\",            \"Unapproved\",\n    \"tvnserver.exe\",                    \"TightVNC\",       \"Unapproved\",\n    \"uvnc_service.exe\",                 \"UltraVNC\",       \"Unapproved\",\n    \"ateraagent.exe\",                   \"Atera\",          \"Unapproved\",\n    \"meshagent.exe\",                    \"MeshCentral\",    \"Unapproved\",\n    \"client32.exe\",                     \"NetSupport\",     \"Unapproved\",\n    \"bomgar-scc.exe\",                   \"BeyondTrust\",    \"Unapproved\",\n    \"zohotray.exe\",                     \"Zoho Assist\",    \"Unapproved\",\n    \"dwrcs.exe\",                        \"Dameware\",       \"Unapproved\"\n];\n\nlet ScopedEvents =\n    DeviceNetworkEvents\n    | where isempty('{DeviceFilter}')\n        or DeviceName contains '{DeviceFilter}'\n    | where isempty('{ProcessFilter}')\n        or InitiatingProcessFileName contains '{ProcessFilter}'\n    | where isempty('{DomainFilter}')\n        or RemoteUrl contains '{DomainFilter}'\n    | extend ParsedDomain = tostring(parse_url(RemoteUrl).Host)\n    | extend RemoteDomain = tolower(\n        iff(\n            isempty(ParsedDomain),\n            RemoteUrl,\n            ParsedDomain\n        )\n    )\n    | extend IsExternal =\n        isnotempty(RemoteIP)\n        and not(ipv4_is_private(RemoteIP))\n        and RemoteIP !in (\"127.0.0.1\", \"::1\")\n        and not(RemoteIP startswith \"fe80:\")\n        and not(RemoteIP startswith \"fc\")\n        and not(RemoteIP startswith \"fd\")\n    | extend IsExcludedDomain =\n        RemoteDomain in~ (ExcludedDomains)\n        or RemoteDomain endswith \".windowsupdate.com\"\n        or RemoteDomain endswith \".update.microsoft.com\"\n        or RemoteDomain endswith \".wvd.microsoft.com\";\n\nlet Current =\n    ScopedEvents\n    | where Timestamp >= CurrentStart;\n\nlet Baseline =\n    ScopedEvents\n    | where Timestamp >= BaselineStart\n    | where Timestamp < BaselineEnd;\n\nlet BaselineDomains =\n    Baseline\n    | where IsExternal\n    | where isnotempty(RemoteDomain)\n    | where not(IsExcludedDomain)\n    | summarize by RemoteDomain;\n\nlet NewDomainCount = toscalar(\n    Current\n    | where IsExternal\n    | where isnotempty(RemoteDomain)\n    | where not(IsExcludedDomain)\n    | summarize by RemoteDomain\n    | join kind=leftanti BaselineDomains on RemoteDomain\n    | count\n);\n\nlet RareProcessCount = toscalar(\n    Current\n    | where isnotempty(InitiatingProcessFileName)\n    | summarize\n        Devices = dcount(DeviceId),\n        Connections = count()\n        by InitiatingProcessFileName\n    | where Devices <= RareDeviceThreshold\n    | where Connections >= 5\n    | count\n);\n\nlet ExternalLOLBinCount = toscalar(\n    Current\n    | where IsExternal\n    | where InitiatingProcessFileName in~ (\n        \"powershell.exe\",\n        \"pwsh.exe\",\n        \"cmd.exe\",\n        \"rundll32.exe\",\n        \"mshta.exe\",\n        \"regsvr32.exe\",\n        \"cscript.exe\",\n        \"wscript.exe\",\n        \"curl.exe\",\n        \"bitsadmin.exe\",\n        \"certutil.exe\",\n        \"ftp.exe\",\n        \"msiexec.exe\",\n        \"wmic.exe\",\n        \"msbuild.exe\"\n    )\n    // Count distinct process/device/domain combinations instead of raw events\n    | summarize by\n        DeviceId,\n        InitiatingProcessFileName,\n        RemoteDomain\n    | count\n);\n\nlet UnapprovedRMMCount = toscalar(\n    Current\n    | join kind=inner RemoteTools on InitiatingProcessFileName\n    | where ApprovalStatus == \"Unapproved\"\n    | summarize by DeviceId, ToolName\n    | count\n);\n\nlet ReviewRMMCount = toscalar(\n    Current\n    | join kind=inner RemoteTools on InitiatingProcessFileName\n    | where ApprovalStatus == \"Needs Review\"\n    | summarize by DeviceId, ToolName\n    | count\n);\n\n// Thresholds should be tuned after observing normal weekly values\nlet OverallStatus = case(\n    UnapprovedRMMCount > 0,\n        \"Investigate\",\n\n    NewDomainCount > 25\n        or ExternalLOLBinCount > 50,\n        \"Investigate\",\n\n    NewDomainCount > 10\n        or RareProcessCount > 10\n        or ExternalLOLBinCount > 10\n        or ReviewRMMCount > 0,\n        \"Needs Review\",\n\n    \"No Significant Deviations\"\n);\n\nunion\n    (\n        print\n            SortOrder = 1,\n            Metric = \"Baseline Status\",\n            Value = OverallStatus\n    ),\n    (\n        print\n            SortOrder = 2,\n            Metric = \"New External Domains\",\n            Value = tostring(NewDomainCount)\n    ),\n    (\n        print\n            SortOrder = 3,\n            Metric = \"Rare Network Processes\",\n            Value = tostring(RareProcessCount)\n    ),\n    (\n        print\n            SortOrder = 4,\n            Metric = \"External LOLBin Behaviors\",\n            Value = tostring(ExternalLOLBinCount)\n    ),\n    (\n        print\n            SortOrder = 5,\n            Metric = \"Unapproved RMM Instances\",\n            Value = tostring(UnapprovedRMMCount)\n    ),\n    (\n        print\n            SortOrder = 6,\n            Metric = \"RMM Requiring Review\",\n            Value = tostring(ReviewRMMCount)\n    )\n| order by SortOrder asc\n| project Metric, Value",
+                            "size": 0,
+                            "title": "Baseline Status",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "tiles",
+                            "tileSettings": {
+                                "titleContent": {
+                                    "columnMatch": "Metric",
+                                    "formatter": 1
+                                },
+                                "leftContent": {
+                                    "columnMatch": "Value",
+                                    "formatter": 12
+                                },
+                                "showBorder": false
+                            }
+                        },
+                        "name": "Health",
+                        "id": "88d0cde0-7bd8-41f3-a293-1e39d1856d95"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "DeviceNetworkEvents\n| where Timestamp {TimeRange}\n| where isempty('{DeviceFilter}') or DeviceName contains '{DeviceFilter}'\n| where isempty('{ProcessFilter}') or InitiatingProcessFileName contains '{ProcessFilter}'\n| where isempty('{DomainFilter}') or RemoteUrl contains '{DomainFilter}'\n| summarize Connections=count(), Devices=dcount(DeviceId) by Day=startofday(Timestamp)\n| order by Day asc",
+                            "size": 0,
+                            "title": "Daily Network Activity",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "timechart"
+                        },
+                        "name": "Daily",
+                        "id": "283d2e8b-58d3-44a7-858a-644861e7c334"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "// Daily network activity in the workbook-selected period\nlet CurrentDailyActivity =\n    DeviceNetworkEvents\n    | where Timestamp {TimeRange}\n    | summarize Connections = count() by Day = startofday(Timestamp);\n\n// Start of the selected period\nlet SelectedStart =\n    toscalar(\n        CurrentDailyActivity\n        | summarize min(Day)\n    );\n\n// Daily network activity during the 30 days before the selected period\nlet BaselineDailyActivity =\n    DeviceNetworkEvents\n    | where Timestamp >= SelectedStart - 30d\n    | where Timestamp < SelectedStart\n    | summarize Connections = count() by Day = startofday(Timestamp);\n\n// Current selected-period metrics\nlet CurrentMetrics =\n    CurrentDailyActivity\n    | summarize\n        CurrentDays = count(),\n        CurrentDailyAverage = avg(Connections),\n        CurrentMin = min(Connections),\n        CurrentMax = max(Connections);\n\n// Historical baseline metrics\nlet BaselineMetrics =\n    BaselineDailyActivity\n    | summarize\n        BaselineDays = count(),\n        BaselineDailyAverage = avg(Connections),\n        BaselineMin = min(Connections),\n        BaselineMax = max(Connections);\n\nCurrentMetrics\n| extend JoinKey = 1\n| join kind=inner (\n    BaselineMetrics\n    | extend JoinKey = 1\n) on JoinKey\n| extend PercentDifference = iff(\n    isnull(BaselineDailyAverage) or BaselineDailyAverage == 0,\n    real(null),\n    round(\n        100.0 * (CurrentDailyAverage - BaselineDailyAverage)\n        / BaselineDailyAverage,\n        1\n    )\n)\n| project\n    CurrentDays,\n    CurrentDailyAverage = round(CurrentDailyAverage, 0),\n    CurrentMin,\n    CurrentMax,\n    BaselineDays,\n    BaselineDailyAverage = round(BaselineDailyAverage, 0),\n    BaselineMin,\n    BaselineMax,\n    PercentDifference",
+                            "size": 2,
+                            "title": "Network Activity vs Prior 30-Day Baseline",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table"
+                        },
+                        "name": "Anomaly",
+                        "id": "f4ec7e3c-8666-4cbd-b79c-273319ad7179"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "// Traffic distribution in the workbook-selected period\nlet CurrentTraffic =\n    DeviceNetworkEvents\n    | where Timestamp {TimeRange}\n    | extend NetworkScope = case(\n        ActionType == \"ListeningConnectionCreated\", \"Listening\",\n        RemoteIP in (\"127.0.0.1\", \"::1\"), \"Loopback\",\n        RemoteIP startswith \"fe80:\"\n            or RemoteIP startswith \"fc\"\n            or RemoteIP startswith \"fd\", \"Internal\",\n        ipv4_is_private(RemoteIP), \"Internal\",\n        isnotempty(RemoteIP), \"External\",\n        \"Unknown\"\n    )\n    | summarize CurrentConnections = count() by NetworkScope;\n\n// Start of the selected workbook period\nlet SelectedStart =\n    toscalar(\n        DeviceNetworkEvents\n        | where Timestamp {TimeRange}\n        | summarize min(Timestamp)\n    );\n\n// Traffic distribution during the 30 days before the selected period\nlet BaselineTraffic =\n    DeviceNetworkEvents\n    | where Timestamp >= SelectedStart - 30d\n    | where Timestamp < SelectedStart\n    | extend NetworkScope = case(\n        ActionType == \"ListeningConnectionCreated\", \"Listening\",\n        RemoteIP in (\"127.0.0.1\", \"::1\"), \"Loopback\",\n        RemoteIP startswith \"fe80:\"\n            or RemoteIP startswith \"fc\"\n            or RemoteIP startswith \"fd\", \"Internal\",\n        ipv4_is_private(RemoteIP), \"Internal\",\n        isnotempty(RemoteIP), \"External\",\n        \"Unknown\"\n    )\n    | summarize BaselineConnections = count() by NetworkScope;\n\n// Totals used to calculate distribution percentages\nlet CurrentTotal =\n    toscalar(\n        CurrentTraffic\n        | summarize sum(CurrentConnections)\n    );\n\nlet BaselineTotal =\n    toscalar(\n        BaselineTraffic\n        | summarize sum(BaselineConnections)\n    );\n\nCurrentTraffic\n| join kind=fullouter BaselineTraffic on NetworkScope\n| extend\n    NetworkScope = coalesce(NetworkScope, NetworkScope1),\n    CurrentConnections = coalesce(CurrentConnections, 0),\n    BaselineConnections = coalesce(BaselineConnections, 0)\n| extend\n    CurrentPercent = iff(\n        CurrentTotal == 0,\n        real(null),\n        round(100.0 * CurrentConnections / CurrentTotal, 1)\n    ),\n    BaselinePercent = iff(\n        BaselineTotal == 0,\n        real(null),\n        round(100.0 * BaselineConnections / BaselineTotal, 1)\n    )\n| extend PercentagePointChange = round(\n    CurrentPercent - BaselinePercent,\n    1\n)\n| project\n    NetworkScope,\n    CurrentPercent,\n    BaselinePercent,\n    PercentagePointChange\n| order by CurrentPercent desc",
+                            "size": 0,
+                            "title": "Network Scope Distribution vs Prior 30-Day Baseline",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "gridSettings": {
+                                "sortBy": [
+                                    {
+                                        "itemKey": "PercentagePointChange",
+                                        "sortOrder": 2
+                                    }
+                                ]
+                            }
+                        },
+                        "name": "Scope",
+                        "id": "4b71d2dd-17b3-46b7-9e85-ea7c84e7ccf8"
+                    }
+                ]
+            },
+            "name": "Executive Overview",
+            "id": "71ba4e37-bfff-4848-ad10-e3787d1aa3f6"
+        },
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "🌐 2. Destination Deviations",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "### Destination Deviations\n\nIdentify external destinations that are new or uncommon."
+                        },
+                        "name": "Intro",
+                        "id": "e271a83a-012c-42ba-b06e-8fd6d366fb3e"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "let CurrentDays = 7;\nlet BaselineDays = toint('{BaselineDays}');\nlet CurrentStart = ago(CurrentDays * 1d);\nlet BaselineStart = ago((CurrentDays + BaselineDays) * 1d);\nlet BaselineEnd = CurrentStart;\nlet BaselineDomains =\n    DeviceNetworkEvents\n    | where Timestamp between (BaselineStart .. BaselineEnd)\n    | where isnotempty(RemoteUrl) and isnotempty(RemoteIP)\n    | where not(ipv4_is_private(RemoteIP))\n    | extend RemoteDomain = tostring(parse_url(RemoteUrl).Host)\n    | extend RemoteDomain = iff(\n        isempty(RemoteDomain),\n        tolower(RemoteUrl),\n        tolower(RemoteDomain)\n    )\n    | where RemoteDomain !endswith \"windowsupdate.com\"\n    | where RemoteDomain !endswith \"update.microsoft.com\"\n    | where RemoteDomain !endswith \"communications.svc.cloud.microsoft\"\n    | summarize by RemoteDomain;\nDeviceNetworkEvents\n| where Timestamp >= CurrentStart\n| where isnotempty(RemoteUrl) and isnotempty(RemoteIP)\n| where not(ipv4_is_private(RemoteIP))\n| extend RemoteDomain = tostring(parse_url(RemoteUrl).Host)\n| extend RemoteDomain = iff(\n    isempty(RemoteDomain),\n    tolower(RemoteUrl),\n    tolower(RemoteDomain)\n)\n| where RemoteDomain !endswith \"windowsupdate.com\"\n| where RemoteDomain !endswith \"update.microsoft.com\"\n| where RemoteDomain !endswith \"communications.svc.cloud.microsoft\"\n| summarize\n    Connections = count(),\n    Devices = dcount(DeviceId),\n    Users = dcountif(\n        InitiatingProcessAccountUpn,\n        isnotempty(InitiatingProcessAccountUpn)\n    ),\n    Processes = make_set(InitiatingProcessFileName, 10),\n    RemoteIPs = make_set(RemoteIP, 10),\n    SampleURLs = make_set(RemoteUrl, 5),\n    FirstSeen = min(Timestamp),\n    LastSeen = max(Timestamp)\n    by RemoteDomain\n| join kind=leftanti BaselineDomains on RemoteDomain\n| order by Devices desc, Connections desc",
+                            "size": 0,
+                            "title": "New External Domains",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "New Domains",
+                        "id": "2a8a880c-fcdf-4d16-9c03-acf4a4fe7b4a"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "DeviceNetworkEvents\n| where Timestamp {TimeRange}\n| where isnotempty(RemoteUrl) and isnotempty(RemoteIP)\n| where not(ipv4_is_private(RemoteIP))\n\n// Normalize full URLs into domains\n| extend RemoteDomain = tostring(parse_url(RemoteUrl).Host)\n| extend RemoteDomain = iff(\n    isempty(RemoteDomain),\n    tolower(RemoteUrl),\n    tolower(RemoteDomain)\n)\n\n// Expected infrastructure exclusions\n| where RemoteDomain !in (\"localhost\", \"localhost.localdomain\")\n| where RemoteDomain !endswith \"windowsupdate.com\"\n| where RemoteDomain !endswith \"update.microsoft.com\"\n| where RemoteDomain !endswith \"trafficrouter.communications.svc.cloud.microsoft\"\n| where RemoteDomain !endswith \"wvd.microsoft.com\"\n\n// Summarize by normalized domain\n| summarize\n    Connections = count(),\n    Devices = dcount(DeviceId),\n    Users = dcountif(\n        InitiatingProcessAccountUpn,\n        isnotempty(InitiatingProcessAccountUpn)\n    ),\n    Processes = make_set(InitiatingProcessFileName, 10),\n    RemoteIPs = make_set(RemoteIP, 10),\n    SampleURLs = make_set(RemoteUrl, 5),\n    FirstSeen = min(Timestamp),\n    LastSeen = max(Timestamp)\n    by RemoteDomain\n\n// Rare means seen on only a few devices\n| where Devices <= toint('{RareDeviceThreshold}')\n| order by Devices asc, Connections desc",
+                            "size": 0,
+                            "title": "Rare External Domains",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "Rare Domains",
+                        "id": "cf7c88c4-2095-448f-bac5-ab5d7dca3afa"
+                    }
+                ]
+            },
+            "name": "Destination Deviations",
+            "id": "1994736a-fbef-4e52-aa1e-a5594e6e90de"
+        },
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "⚙️ 3. Process Deviations",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "### Process Deviations\n\nIdentify uncommon processes and significant network-volume increases."
+                        },
+                        "name": "Intro",
+                        "id": "d6e0ab44-7ddf-47b4-b784-d63a7102d607"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "let CurrentDays = 7;\nlet BaselineDays = toint('{BaselineDays}');\nlet CurrentStart = ago(CurrentDays * 1d);\nlet BaselineStart = ago((CurrentDays + BaselineDays) * 1d);\nlet BaselineEnd = CurrentStart;\n\nlet Current =\n    DeviceNetworkEvents\n    | where Timestamp >= CurrentStart\n    | where isnotempty(InitiatingProcessFileName)\n    | summarize CurrentConnections=count(), CurrentDevices=dcount(DeviceId)\n        by InitiatingProcessFileName;\nlet Historical =\n    DeviceNetworkEvents\n    | where Timestamp between (BaselineStart .. BaselineEnd)\n    | where isnotempty(InitiatingProcessFileName)\n    | summarize BaselineConnections=count(), BaselineDevices=dcount(DeviceId)\n        by InitiatingProcessFileName\n    | extend ExpectedConnections=todouble(BaselineConnections) * todouble(CurrentDays) / todouble(BaselineDays);\nCurrent\n| join kind=leftouter Historical on InitiatingProcessFileName\n| extend ExpectedConnections=coalesce(ExpectedConnections, 0.0)\n| extend ChangePercent=case(\n    ExpectedConnections == 0 and CurrentConnections > 0, 9999.0,\n    ExpectedConnections == 0, 0.0,\n    round(100.0 * (CurrentConnections - ExpectedConnections) / ExpectedConnections, 1)\n)\n| where CurrentConnections >= 10\n| where ChangePercent >= todouble('{SpikePercentThreshold}')\n| project\n    InitiatingProcessFileName,\n    CurrentConnections,\n    ExpectedConnections=round(ExpectedConnections, 0),\n    ChangePercent,\n    CurrentDevices,\n    BaselineDevices\n| order by ChangePercent desc",
+                            "size": 0,
+                            "title": "Processes With Significant Network Increase",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "Spikes",
+                        "id": "ed8cdab6-a0d4-4b8f-9c33-d3984590c798"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "DeviceNetworkEvents\n| where Timestamp {TimeRange}\n| where isnotempty(InitiatingProcessFileName)\n| summarize\n    Connections=count(),\n    Devices=dcount(DeviceId),\n    Users=dcountif(InitiatingProcessAccountUpn, isnotempty(InitiatingProcessAccountUpn)),\n    ExternalDomains=dcountif(RemoteUrl, isnotempty(RemoteUrl) and not(ipv4_is_private(RemoteIP))),\n    SampleDevices=make_set(DeviceName, 8),\n    SampleDomains=make_set(RemoteUrl, 8),\n    FirstSeen=min(Timestamp),\n    LastSeen=max(Timestamp)\n    by InitiatingProcessFileName\n| where Devices <= toint('{RareDeviceThreshold}') and Connections >= 5\n| order by ExternalDomains desc, Connections desc",
+                            "size": 0,
+                            "title": "Rare Network Processes",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "Rare Processes",
+                        "id": "b1c6f2c8-c8ab-4748-85ba-9f203f5c2ec0"
+                    }
+                ]
+            },
+            "name": "Process Deviations",
+            "id": "f82d08e1-2e16-4b81-b732-55e2890a0d9f"
+        },
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "🛠️ 4. LOLBin Network Activity",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "### LOLBin Activity\n\nReview network activity from commonly abused Windows binaries."
+                        },
+                        "name": "Intro",
+                        "id": "4086df9d-bd2e-43d8-b609-13c0d79b593f"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "let LOLBins = datatable(\n    InitiatingProcessFileName:string,\n    LOLBinCategory:string,\n    ReviewPriority:string\n)\n[\n    // Command and scripting\n    \"powershell.exe\",        \"Command / Scripting\",           \"Medium\",\n    \"pwsh.exe\",              \"Command / Scripting\",           \"Medium\",\n    \"cmd.exe\",               \"Command / Scripting\",           \"Medium\",\n    \"cscript.exe\",           \"Script Execution\",              \"High\",\n    \"wscript.exe\",           \"Script Execution\",              \"High\",\n\n    // Signed binary proxy execution\n    \"rundll32.exe\",          \"Signed Binary Proxy Execution\", \"High\",\n    \"mshta.exe\",             \"Signed Binary Proxy Execution\", \"High\",\n    \"regsvr32.exe\",          \"Signed Binary Proxy Execution\", \"High\",\n    \"msiexec.exe\",           \"Signed Binary Proxy Execution\", \"High\",\n    \"cmstp.exe\",             \"Signed Binary Proxy Execution\", \"High\",\n    \"installutil.exe\",       \"Signed Binary Proxy Execution\", \"High\",\n    \"regasm.exe\",            \"Signed Binary Proxy Execution\", \"High\",\n    \"regsvcs.exe\",           \"Signed Binary Proxy Execution\", \"High\",\n    \"control.exe\",           \"Signed Binary Proxy Execution\", \"Medium\",\n    \"mmc.exe\",               \"Signed Binary Proxy Execution\", \"Medium\",\n\n    // Download and transfer\n    \"curl.exe\",              \"Download / Transfer\",           \"Medium\",\n    \"bitsadmin.exe\",         \"Download / Transfer\",           \"High\",\n    \"certutil.exe\",          \"Download / Decode\",             \"High\",\n    \"ftp.exe\",               \"Download / Transfer\",           \"High\",\n    \"finger.exe\",            \"Download / Transfer\",           \"High\",\n    \"appinstaller.exe\",      \"Download / Installer\",          \"High\",\n    \"desktopimgdownldr.exe\", \"Download\",                      \"High\",\n\n    // Compilation and alternate execution\n    \"msbuild.exe\",           \"Compile / Execute\",             \"High\",\n    \"wmic.exe\",              \"Remote / Proxy Execution\",      \"High\",\n    \"esentutl.exe\",          \"File Transfer / Copy\",          \"Medium\"\n];\n\nDeviceNetworkEvents\n| where Timestamp {TimeRange}\n| join kind=inner LOLBins on InitiatingProcessFileName\n| extend NetworkScope = case(\n    RemoteIP in (\"127.0.0.1\", \"::1\"), \"Loopback\",\n    RemoteIP startswith \"fe80:\"\n        or RemoteIP startswith \"fc\"\n        or RemoteIP startswith \"fd\", \"Internal\",\n    ipv4_is_private(RemoteIP), \"Internal\",\n    isnotempty(RemoteIP), \"External\",\n    \"Unknown\"\n)\n| extend RemoteDomain = tostring(parse_url(RemoteUrl).Host)\n| extend RemoteDomain = iff(\n    isempty(RemoteDomain),\n    tolower(RemoteUrl),\n    tolower(RemoteDomain)\n)\n| summarize\n    Connections = count(),\n    Devices = dcount(DeviceId),\n    Users = dcountif(\n        InitiatingProcessAccountUpn,\n        isnotempty(InitiatingProcessAccountUpn)\n    ),\n    Domains = make_set(RemoteDomain, 15),\n    RemoteIPs = make_set(RemoteIP, 15),\n    SampleCommands = make_set(InitiatingProcessCommandLine, 5),\n    SampleDevices = make_set(DeviceName, 10),\n    FirstSeen = min(Timestamp),\n    LastSeen = max(Timestamp)\n    by\n        InitiatingProcessFileName,\n        LOLBinCategory,\n        ReviewPriority,\n        NetworkScope\n| order by\n    ReviewPriority asc,\n    NetworkScope asc,\n    Connections desc",
+                            "size": 0,
+                            "title": "LOLBin Network Activity",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "LOLBin Details",
+                        "id": "a269cc04-0946-41ad-8564-4b3a98b9fa76"
+                    }
+                ]
+            },
+            "name": "LOLBin",
+            "id": "0559c811-af1a-4e11-b896-f0a11d0053bb"
+        },
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "🐍 5. Scripting Engines",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "### Scripting Engines\n\nMonitor PowerShell, Python, Node.js, Java, and other interpreters."
+                        },
+                        "name": "Intro",
+                        "id": "00728832-d90e-4b94-9c5b-e3cb4259604d"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "let Engines = dynamic([\n    // PowerShell\n    \"powershell.exe\",\n    \"pwsh.exe\",\n    \"powershell_ise.exe\",\n\n    // Windows Script Host\n    \"cscript.exe\",\n    \"wscript.exe\",\n\n    // Python\n    \"python.exe\",\n    \"pythonw.exe\",\n    \"py.exe\",\n\n    // JavaScript / Node\n    \"node.exe\",\n    \"nodejs.exe\",\n\n    // Linux shells through WSL\n    \"wsl.exe\",\n    \"bash.exe\",\n    \"sh.exe\",\n\n    // .NET\n    \"dotnet.exe\",\n\n    // Java\n    \"java.exe\",\n    \"javaw.exe\",\n\n    // Other scripting languages\n    \"php.exe\",\n    \"php-cgi.exe\",\n    \"perl.exe\",\n    \"ruby.exe\",\n    \"lua.exe\",\n    \"rscript.exe\",\n    \"julia.exe\"\n]);\n\nDeviceNetworkEvents\n| where Timestamp {TimeRange}\n| where InitiatingProcessFileName in~ (Engines)\n| extend NetworkScope = case(\n    RemoteIP in (\"127.0.0.1\", \"::1\"), \"Loopback\",\n    RemoteIP startswith \"fe80:\"\n        or RemoteIP startswith \"fc\"\n        or RemoteIP startswith \"fd\", \"Internal\",\n    ipv4_is_private(RemoteIP), \"Internal\",\n    isnotempty(RemoteIP), \"External\",\n    \"Unknown\"\n)\n| extend RemoteDomain = tostring(parse_url(RemoteUrl).Host)\n| extend RemoteDomain = iff(\n    isempty(RemoteDomain),\n    tolower(RemoteUrl),\n    tolower(RemoteDomain)\n)\n| summarize\n    Connections = count(),\n    Devices = dcount(DeviceId),\n    Users = dcountif(\n        InitiatingProcessAccountUpn,\n        isnotempty(InitiatingProcessAccountUpn)\n    ),\n    ExternalDomains = dcountif(\n        RemoteDomain,\n        NetworkScope == \"External\" and isnotempty(RemoteDomain)\n    ),\n    SampleDomains = make_set_if(\n        RemoteDomain,\n        NetworkScope == \"External\" and isnotempty(RemoteDomain),\n        15\n    ),\n    SampleCommands = make_set(InitiatingProcessCommandLine, 5),\n    SampleDevices = make_set(DeviceName, 10),\n    FirstSeen = min(Timestamp),\n    LastSeen = max(Timestamp)\n    by InitiatingProcessFileName, NetworkScope\n| order by NetworkScope asc, Connections desc",
+                            "size": 0,
+                            "title": "Scripting Engine Network Activity",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "Script Details",
+                        "id": "6cad7225-9512-4a12-80f7-00d4a4f80f68"
+                    }
+                ]
+            },
+            "name": "Scripts",
+            "id": "408b6af1-3e52-4816-a84e-e65c302c0312"
+        },
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "🖥️ 6. Remote Administration",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "### Remote Administration\n\nCompare observed tools against expected approval status."
+                        },
+                        "name": "Intro",
+                        "id": "a1843b7e-b976-4470-a0dc-e9f71c29991d"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "let RemoteTools = datatable(\n    InitiatingProcessFileName:string,\n    ToolName:string,\n    ApprovalStatus:string\n)\n[\n    // Approved\n    \"approved-rmm-agent.exe\",          \"Approved RMM (Customize)\", \"Approved\",\n\n    // Review\n    \"screenconnect.clientservice.exe\", \"ScreenConnect\",     \"Needs Review\",\n    \"screenconnect.windowsclient.exe\", \"ScreenConnect\",     \"Needs Review\",\n\n    // Unapproved\n    \"quickassist.exe\",                 \"Quick Assist\",      \"Unapproved\",\n    \"anydesk.exe\",                     \"AnyDesk\",           \"Unapproved\",\n    \"teamviewer.exe\",                  \"TeamViewer\",        \"Unapproved\",\n    \"teamviewer_service.exe\",          \"TeamViewer\",        \"Unapproved\",\n    \"rustdesk.exe\",                    \"RustDesk\",          \"Unapproved\",\n\n    \"winvnc.exe\",                      \"VNC\",               \"Unapproved\",\n    \"vncviewer.exe\",                   \"VNC\",               \"Unapproved\",\n    \"tvnserver.exe\",                   \"TightVNC\",          \"Unapproved\",\n    \"tvnviewer.exe\",                   \"TightVNC\",          \"Unapproved\",\n    \"uvnc_service.exe\",                \"UltraVNC\",          \"Unapproved\",\n\n    \"splashtopremote.exe\",             \"Splashtop\",         \"Unapproved\",\n    \"srmanager.exe\",                   \"Splashtop\",         \"Unapproved\",\n\n    \"ateraagent.exe\",                  \"Atera\",             \"Unapproved\",\n    \"agentpackage.exe\",                \"Atera\",             \"Unapproved\",\n\n    \"bomgar-scc.exe\",                  \"BeyondTrust\",       \"Unapproved\",\n    \"bomgar-rdp.exe\",                  \"BeyondTrust\",       \"Unapproved\",\n\n    \"logmein.exe\",                     \"LogMeIn\",           \"Unapproved\",\n    \"lmi_rescue.exe\",                  \"LogMeIn Rescue\",    \"Unapproved\",\n\n    \"gotoassist.exe\",                  \"GoToAssist\",        \"Unapproved\",\n    \"g2ax_comm_customer.exe\",          \"GoToAssist\",        \"Unapproved\",\n\n    \"zohotray.exe\",                    \"Zoho Assist\",       \"Unapproved\",\n    \"za_connect.exe\",                  \"Zoho Assist\",       \"Unapproved\",\n\n    \"simplehelp.exe\",                  \"SimpleHelp\",        \"Unapproved\",\n    \"servertoolbox.exe\",               \"SimpleHelp\",        \"Unapproved\",\n\n    \"netserver.exe\",                   \"NetSupport\",        \"Unapproved\",\n    \"client32.exe\",                    \"NetSupport\",        \"Unapproved\",\n\n    \"meshagent.exe\",                   \"MeshCentral\",       \"Unapproved\",\n    \"dwrcs.exe\",                       \"Dameware\",          \"Unapproved\",\n    \"remotepc.exe\",                    \"RemotePC\",          \"Unapproved\",\n    \"parsecd.exe\",                     \"Parsec\",            \"Unapproved\"\n];\nDeviceNetworkEvents\n| where Timestamp {TimeRange}\n| join kind=inner RemoteTools on InitiatingProcessFileName\n| summarize\n    Connections = count(),\n    Devices = dcount(DeviceId),\n    Users = dcountif(\n        InitiatingProcessAccountUpn,\n        isnotempty(InitiatingProcessAccountUpn)\n    ),\n    SampleDevices = make_set(DeviceName, 10),\n    SampleUsers = make_set(InitiatingProcessAccountUpn, 10),\n    Domains = make_set(RemoteUrl, 10),\n    RemoteIPs = make_set(RemoteIP, 10),\n    FirstSeen = min(Timestamp),\n    LastSeen = max(Timestamp)\n    by ToolName, InitiatingProcessFileName, ApprovalStatus\n| extend Priority = case(\n    ApprovalStatus == \"Unapproved\", 3,\n    ApprovalStatus == \"Needs Review\", 2,\n    1\n)\n| order by Priority desc, Devices desc",
+                            "size": 0,
+                            "title": "Remote Administration Tools",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000,
+                                "sortBy": [
+                                    {
+                                        "itemKey": "RemoteIPs",
+                                        "sortOrder": 1
+                                    }
+                                ]
+                            }
+                        },
+                        "name": "Remote Tools",
+                        "id": "37a3d4d5-58d0-494e-b380-c1d4e98374a1"
+                    }
+                ]
+            },
+            "name": "Remote",
+            "id": "e2f467a7-ce6e-4197-a2dc-e5a8735b0bec"
+        },
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "🔌 7. Ports & Protocols",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "### Ports and Protocols\n\nIdentify newly observed ports and sensitive external protocols."
+                        },
+                        "name": "Intro",
+                        "id": "948ee995-13c7-4636-8ae2-98577c48dc8c"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "let CurrentDays = 7;\nlet BaselineDays = toint('{BaselineDays}');\nlet CurrentStart = ago(CurrentDays * 1d);\nlet BaselineStart = ago((CurrentDays + BaselineDays) * 1d);\nlet BaselineEnd = CurrentStart;\n\nlet BaselinePorts =\n    DeviceNetworkEvents\n    | where Timestamp between (BaselineStart .. BaselineEnd)\n    | where isnotempty(RemotePort)\n    | summarize by RemotePort, Protocol;\nDeviceNetworkEvents\n| where Timestamp >= CurrentStart\n| where isnotempty(RemotePort)\n| summarize\n    Connections=count(),\n    Devices=dcount(DeviceId),\n    Processes=make_set(InitiatingProcessFileName, 10),\n    RemoteIPs=make_set(RemoteIP, 10),\n    FirstSeen=min(Timestamp),\n    LastSeen=max(Timestamp)\n    by RemotePort, Protocol\n| join kind=leftanti BaselinePorts on RemotePort, Protocol\n| order by Devices desc, Connections desc",
+                            "size": 0,
+                            "title": "New Remote Ports",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "New Ports",
+                        "id": "4ed1bb92-2f8e-4c69-82e7-3dc765062ebc"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "DeviceNetworkEvents\n| where Timestamp {TimeRange}\n| where RemotePort in (21,22,23,25,53,110,135,137,138,139,143,389,445,3389,5985,5986)\n| where isnotempty(RemoteIP) and not(ipv4_is_private(RemoteIP))\n| summarize\n    Connections=count(),\n    Devices=dcount(DeviceId),\n    Users=dcountif(InitiatingProcessAccountUpn, isnotempty(InitiatingProcessAccountUpn)),\n    Processes=make_set(InitiatingProcessFileName, 10),\n    RemoteIPs=make_set(RemoteIP, 10),\n    FirstSeen=min(Timestamp),\n    LastSeen=max(Timestamp)\n    by RemotePort, Protocol\n| order by Connections desc",
+                            "size": 0,
+                            "title": "External Connections on Sensitive Ports",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "Sensitive Ports",
+                        "id": "c42b9a36-3c1a-4dfd-af13-86b7a39438ba"
+                    }
+                ]
+            },
+            "name": "Ports",
+            "id": "337397dd-3272-4775-b928-80e0dc318c99"
+        },
+        {
+            "type": 12,
+            "content": {
+                "version": "NotebookGroup/1.0",
+                "groupType": "editable",
+                "title": "🔍 8. Network Event Explorer",
+                "items": [
+                    {
+                        "type": 1,
+                        "content": {
+                            "json": "### Raw Event Explorer\n\nUse filters to investigate the activity behind a deviation."
+                        },
+                        "name": "Intro",
+                        "id": "1d98d5f8-d603-41bb-85fd-65fd51656fc2"
+                    },
+                    {
+                        "type": 3,
+                        "content": {
+                            "version": "KqlItem/1.0",
+                            "query": "DeviceNetworkEvents\n| where Timestamp {TimeRange}\n| where isempty('{DeviceFilter}') or DeviceName contains '{DeviceFilter}'\n| where isempty('{ProcessFilter}') or InitiatingProcessFileName contains '{ProcessFilter}'\n| where isempty('{DomainFilter}') or RemoteUrl contains '{DomainFilter}'\n| extend NetworkScope=case(\n    RemoteIP in ('127.0.0.1','::1'), 'Loopback',\n    RemoteIP startswith 'fe80:' or RemoteIP startswith 'fc' or RemoteIP startswith 'fd', 'Internal',\n    ipv4_is_private(RemoteIP), 'Internal',\n    isnotempty(RemoteIP), 'External',\n    'Unknown'\n)\n| project\n    Timestamp,\n    DeviceName,\n    InitiatingProcessFileName,\n    InitiatingProcessCommandLine,\n    InitiatingProcessParentFileName,\n    InitiatingProcessAccountUpn,\n    RemoteUrl,\n    RemoteIP,\n    RemotePort,\n    Protocol,\n    NetworkScope,\n    ActionType\n| order by Timestamp desc",
+                            "size": 0,
+                            "title": "Network Event Explorer",
+                            "queryType": 0,
+                            "resourceType": "microsoft.operationalinsights/workspaces",
+                            "visualization": "table",
+                            "showExportToExcel": true,
+                            "gridSettings": {
+                                "filter": true,
+                                "rowLimit": 1000
+                            }
+                        },
+                        "name": "Raw Events",
+                        "id": "a71c6c7b-abd7-405e-b286-3836129bac4d"
+                    }
+                ]
+            },
+            "name": "Explorer",
+            "id": "1571651f-0896-4de7-920c-cc453853aa32"
+        }
+    ],
+    "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}
